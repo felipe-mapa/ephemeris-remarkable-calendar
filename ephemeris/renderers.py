@@ -1,10 +1,7 @@
-from io import BytesIO
 import os
 from datetime import datetime, time, timedelta, tzinfo
 import calendar
-from tempfile import NamedTemporaryFile
 from loguru import logger
-import cairosvg
 import subprocess
 from pathlib import Path
 
@@ -12,7 +9,6 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.units import inch
 from reportlab.lib.colors import HexColor, black, white
 from reportlab.pdfbase import pdfmetrics
-from reportlab.lib.utils import ImageReader
 
 
 
@@ -356,56 +352,6 @@ def render_time_grid(
                     label,
                 )
 
-def render_cover(
-     c: canvas.Canvas,
-     cover_src: str,
-     page_w_pt: float,
-     page_h_pt: float,
- ):
-     """
-     Rasterize svg_path → PNG, draw it full-width (or COVER_WIDTH_PT)
-     on a single-page PDF, centered, then append to merger.
-     """
-     dpi = settings.PDF_DPI
-     # 1) Desired image width in points (defaults to full page width)
-     target_w_frac = settings.COVER_WIDTH_FRAC
-     # 2) Vertical nudge
-     v_frac      = settings.COVER_VERT_FRAC
- 
-     target_w_pt = page_w_pt *target_w_frac
-     target_w_px = int(target_w_pt * (dpi/ 72.0))
- 
-     # 4) Rasterize SVG → PNG bytes
-     png_bytes = cairosvg.svg2png(
-         url=cover_src,
-         output_width=target_w_px
-     )
- 
-     # 5) Wrap in ImageReader
-     buf = BytesIO(png_bytes)
-     img = ImageReader(buf)
-     px_w, px_h = img.getSize()
- 
-     # 6) Compute height in points to preserve aspect ratio
-     img_w_pt = target_w_pt
-     img_h_pt = px_h * (72.0 / dpi)
- 
-     # 7) Position centrally
-     x = (page_w_pt - img_w_pt) / 2.0
-     y = (page_h_pt - img_h_pt) * (1 - v_frac)
-
-     tf = NamedTemporaryFile(suffix=".pdf", delete=False)
-     cover_path = tf.name
-     tf.close()
- 
-     # 8) Draw directly to the canvas
-     c.drawImage(
-         img, x, y,
-         width=img_w_pt,
-         height=img_h_pt,
-         mask="auto",
-         preserveAspectRatio=True
-     )
 
 def render_schedule_pdf(
     timed_events: list,
@@ -499,8 +445,32 @@ def render_schedule_pdf(
         
         c.setFont("Montserrat-Bold", heading_size)
         
-        title_text = date_label.strftime('%A, %B %d, %Y')
-        c.drawCentredString(width/2, title_y, title_text)
+        # Split title to make year clickable
+        day_month = date_label.strftime('%A, %B %d, ')
+        year_str = date_label.strftime('%Y')
+        
+        # Calculate positions for centered text with clickable year
+        full_text = day_month + year_str
+        full_width = c.stringWidth(full_text, "Montserrat-Bold", heading_size)
+        start_x = (width - full_width) / 2
+        
+        # Draw day and month
+        c.drawString(start_x, title_y, day_month)
+        
+        # Calculate year position and draw it
+        day_month_width = c.stringWidth(day_month, "Montserrat-Bold", heading_size)
+        year_x = start_x + day_month_width
+        year_width = c.stringWidth(year_str, "Montserrat-Bold", heading_size)
+        c.drawString(year_x, title_y, year_str)
+        
+        # Add clickable link on the year to return to cover page
+        year_height = heading_size * 1.2  # Approximate height for click area
+        c.linkRect(
+            "",  # No URL
+            "cover",  # Link to cover page bookmark
+            (year_x, title_y - 2, year_x + year_width, title_y + year_height),
+            relative=0
+        )
 
     # Line under title
     sep_y = title_y - element_pad
@@ -961,7 +931,7 @@ def render_schedule_pdf(
             if settings.MONOCHROME:
                 c.setFillGray(0)
             else:
-                c.setFillGray(0)  # Black text for the label
+                c.setFillGray(0.3)  # Dark gray text for better contrast
         draw_centered_multiline(
             c,
             label_lines,

@@ -48,9 +48,8 @@ generate_pdf() {
     
     # Set environment variables for ephemeris.py
     export TIME_DATE_RANGE="$year-01-01:$year-12-31"
-    export APP_OUTPUT_PDF_PATH="output/$output_file"
+    export APP_OUTPUT_PDF_PATH="$SCRIPT_DIR/../output/$output_file"
     export APP_FORCE_REFRESH="true"
-    export DOC_COVER_ENABLED="false"
     
     # Run the main ephemeris script (loads from calendar.db)
     "$VENV_PYTHON" "$SCRIPT_DIR/../ephemeris.py"

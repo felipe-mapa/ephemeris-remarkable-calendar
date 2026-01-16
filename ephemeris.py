@@ -23,7 +23,8 @@ from ephemeris.event_processing import (
 )
 from ephemeris.layout import get_page_size
 from ephemeris.utils import parse_date_range
-from ephemeris.renderers import render_cover, render_schedule_pdf, export_pdf_to_png
+from ephemeris.renderers import render_schedule_pdf, export_pdf_to_png
+from ephemeris.year_calendar import render_year_calendar
 from ephemeris.logger import configure_logging
 
 
@@ -85,16 +86,17 @@ async def main():
     for cal_name, cnt in counts.items():
         logger.debug("   • {}: {} events", cal_name, cnt)
 
-    # 8) Optionally render cover
-    if settings.COVER_PAGE:
-        logger.debug("Rendering cover page")
-        w, h = get_page_size()
-        cover_src = settings.DEFAULT_COVER
-        render_cover(c, cover_src, w, h)
-        c.showPage()
+    # 8) Render year calendar as first page (always enabled)
+    logger.debug("Rendering year calendar cover page")
+    w, h = get_page_size()
+    year = date_list[0].year if date_list else datetime.now().year
+    # Add bookmark for the cover page so daily pages can link back
+    c.bookmarkPage("cover")
+    render_year_calendar(c, year, date_list, w, h)
+    c.showPage()
 
     # 9) Per-day expansion & rendering
-    for d in date_list:
+    for idx, d in enumerate(date_list):
         logger.info("Processing {}",d)
         # expand & dedupe
         instances = []
@@ -139,6 +141,10 @@ async def main():
 
         all_day = pre + true_all + other + post
 
+        # Add named destination for this page (for year calendar links)
+        page_num = idx + 2  # +1 for 0-index, +1 for cover page
+        c.bookmarkPage(f"page{page_num}")
+        
         # render schedule
         tmp = f"/tmp/schedule_{d.isoformat()}.pdf"
         try:
@@ -195,7 +201,7 @@ async def main():
         png_dir = export_pdf_to_png(
             pdf_path=out_pdf,
             date_list=date_list,
-            cover=settings.COVER_PAGE,
+            cover=True,  # Year calendar is always the first page
             output_dir=settings.OUTPUT_PNG,
             dpi=settings.PDF_DPI,
         )

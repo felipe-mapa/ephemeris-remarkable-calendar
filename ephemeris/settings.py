@@ -63,7 +63,6 @@ OUTPUT_PNG   = os.getenv("APP_OUTPUT_PNG_DIR", "output/png")
 OUTPUT_PNG_BG   = os.getenv("APP_OUTPUT_BG_PNG_DIR", "output/png_background")
 OUTPUT_PNG_TEXT = os.getenv("APP_OUTPUT_TEXT_PNG_DIR", "output/png_text")
 SEPARATE_TEXT   = os.getenv("DOC_SEPARATE_TEXT", "false").lower() in ("1", "true", "yes")
-DEFAULT_COVER = os.getenv("DOC_COVER_SVG_PATH", str(BASE_DIR / "assets/cover.svg"))
 FONTS_DIR = BASE_DIR / "fonts"
 
 TIMEZONE = os.getenv("TZ", os.getenv("TIME_ZONE", "UTC"))
@@ -82,7 +81,6 @@ END_HOUR   = _parse_hour(_raw_end,   USE_24H)
 EXCLUDE_BEFORE = _parse_hour(_raw_exclude_before, USE_24H)
 
 FORMAT       = os.getenv("APP_OUTPUT_FORMAT", "pdf").lower()
-COVER_PAGE   = os.getenv("DOC_COVER_ENABLED", "true").lower() not in ("0","false","no")
 CONVERT_OFFGRID_TO_ALLDAY = os.getenv("DOC_OVERFLOW_TO_ALLDAY", "true").lower() not in ("0","false","no")
 CREATE_LINKS = os.getenv("DOC_MINICAL_LINKS", "true").lower() not in ("0","false","no")
 INDICATE_DAYS = os.getenv("DOC_MINICAL_INDICATE_RANGE", "true").lower() not in ("0","false","no")
@@ -127,7 +125,3 @@ _raw_blocked_words = os.getenv("APP_FILTER_LIST", "cancelled,canceled")
 FILTER_BLOCKED_WORDS = tuple(w.strip().lower() for w in _raw_blocked_words.split(","))
 FORCE_REFRESH = os.getenv("APP_FORCE_REFRESH", "false").lower() in ("1", "true", "yes")
 POST_HOOK = os.getenv("APP_POST_HOOK")
-
-# Cover
-COVER_WIDTH_FRAC = float(os.getenv("DOC_COVER_WIDTH_SCALE", 0.75))
-COVER_VERT_FRAC = float(os.getenv("DOC_COVER_VERTICAL_POSITION", 0.25))
