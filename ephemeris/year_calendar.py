@@ -33,10 +33,10 @@ def render_year_calendar(
     """
     
     # Page margins
-    margin_left = 30
-    margin_right = 30
-    margin_top = 60
-    margin_bottom = 30
+    margin_left = 35
+    margin_right = 35
+    margin_top = 70
+    margin_bottom = 20
 
     # Font
     font_size = 44
