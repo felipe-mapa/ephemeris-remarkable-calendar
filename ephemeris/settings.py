@@ -65,7 +65,7 @@ OUTPUT_PNG_TEXT = os.getenv("APP_OUTPUT_TEXT_PNG_DIR", "output/png_text")
 SEPARATE_TEXT   = os.getenv("DOC_SEPARATE_TEXT", "false").lower() in ("1", "true", "yes")
 FONTS_DIR = BASE_DIR / "fonts"
 
-TIMEZONE = os.getenv("TZ", os.getenv("TIME_ZONE", "UTC"))
+TIMEZONE = os.getenv("TZ", os.getenv("TIME_ZONE", "Pacific/Auckland"))
 DATE_RANGE = os.getenv("TIME_DATE_RANGE", "today")
 TIME_FORMAT    = os.getenv("TIME_FORMAT", "24")
 USE_24H        = TIME_FORMAT == "24"
@@ -103,10 +103,11 @@ GRIDLINE_COLOR  = os.getenv("DOC_GRID_LINE_COLOR", "gray(20%)")
 FOOTER_COLOR    = os.getenv("DOC_FOOTER_COLOR", "gray(60%)")
 
 # Page layout
-PDF_MARGIN_LEFT   = float(os.getenv("DOC_MARGIN_LEFT", 6))
-PDF_MARGIN_RIGHT  = float(os.getenv("DOC_MARGIN_RIGHT", 6))
-PDF_MARGIN_TOP    = float(os.getenv("DOC_MARGIN_TOP", 9))
-PDF_MARGIN_BOTTOM = float(os.getenv("DOC_MARGIN_BOTTOM", 6))
+PDF_MARGIN = 37
+PDF_MARGIN_LEFT   = float(os.getenv("DOC_MARGIN_LEFT", PDF_MARGIN))
+PDF_MARGIN_RIGHT  = float(os.getenv("DOC_MARGIN_RIGHT", PDF_MARGIN))
+PDF_MARGIN_TOP    = float(os.getenv("DOC_MARGIN_TOP", PDF_MARGIN))
+PDF_MARGIN_BOTTOM = float(os.getenv("DOC_MARGIN_BOTTOM", PDF_MARGIN))
 MINICAL_ALIGN = os.getenv("DOC_MINICAL_ALIGN", "right").lower()
 MINICAL_HEIGHT   = float(os.getenv("DOC_MINICAL_HEIGHT", 60))
 MINICAL_GAP = float(os.getenv("DOC_MINICAL_SPACING", 10))
