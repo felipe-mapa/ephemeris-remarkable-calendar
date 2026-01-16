@@ -267,6 +267,107 @@ def draw_centered_multiline(
             y = y_first + (len(lines)-1 - i) * line_height
             c.drawString(x, y, line)
 
+def render_sidebar(
+    c,
+    layout,
+    *,
+    draw_text=True,
+    draw_shapes=True,
+):
+    """
+    Draw the sidebar with Tasks/Todos section on top and Notes section below.
+    """
+    if not layout["sidebar_enabled"]:
+        return
+    
+    sidebar_left = layout["sidebar_left"]
+    sidebar_right = layout["sidebar_right"]
+    grid_top = layout["grid_top"]
+    grid_bottom = layout["grid_bottom"]
+    text_padding = layout["text_padding"]
+    
+    GRIDLINE_COLOR = settings.GRIDLINE_COLOR
+    TODO_LINES = settings.TODO_LINES
+    NOTES_LINES = settings.NOTES_LINES
+    
+    sidebar_height = grid_top - grid_bottom
+    sidebar_width = sidebar_right - sidebar_left
+    
+    # Calculate section heights based on line counts
+    total_lines = TODO_LINES + NOTES_LINES
+    todo_height = sidebar_height * (TODO_LINES / total_lines)
+    notes_height = sidebar_height * (NOTES_LINES / total_lines)
+    
+    # Positions
+    todo_top = grid_top
+    todo_bottom = todo_top - todo_height
+    notes_top = todo_bottom
+    notes_bottom = grid_bottom
+    
+    # Line spacing within sections
+    todo_line_height = (todo_height - 20) / TODO_LINES  # 20 for header
+    notes_line_height = (notes_height - 20) / NOTES_LINES  # 20 for header
+    
+    checkbox_size = 10
+    checkbox_margin = 5
+    
+    logger.log("VISUAL", "Drawing sidebar: Tasks/Todos + Notes")
+    logger.log("VISUAL", "    Sidebar left: {l:.2f}, right: {r:.2f}", l=sidebar_left, r=sidebar_right)
+    
+    # ─── TASKS/TODOS SECTION ───────────────────────────
+    if draw_text:
+        c.setFont("Montserrat-SemiBold", 10)
+        c.setFillGray(0)
+        c.drawString(sidebar_left, todo_top + text_padding, "Tasks / Todos")
+    
+    # Draw vertical line on left edge of sidebar
+    if draw_shapes:
+        c.setStrokeColor(css_color_to_hex(GRIDLINE_COLOR))
+        c.setLineWidth(0.5)
+        c.line(sidebar_left, grid_top + 15, sidebar_left, grid_bottom)
+    
+    # Draw todo lines with checkboxes
+    for i in range(TODO_LINES):
+        y = todo_top - 20 - (i * todo_line_height)
+        
+        # Draw checkbox (circle)
+        if draw_shapes:
+            c.setStrokeGray(0)
+            c.setLineWidth(0.5)
+            checkbox_x = sidebar_left + checkbox_margin
+            checkbox_y = y - checkbox_size / 2
+            c.circle(checkbox_x + checkbox_size / 2, checkbox_y + checkbox_size / 2, checkbox_size / 2, stroke=1, fill=0)
+        
+        # Draw line for writing
+        if draw_shapes:
+            c.setStrokeColor(css_color_to_hex(GRIDLINE_COLOR))
+            c.setLineWidth(0.5)
+            line_x_start = sidebar_left + checkbox_margin + checkbox_size + 5
+            line_x_end = sidebar_right
+            c.line(line_x_start, y, line_x_end, y)
+    
+    # ─── NOTES SECTION ─────────────────────────────────
+    if draw_text:
+        c.setFont("Montserrat-SemiBold", 10)
+        c.setFillGray(0)
+        c.drawString(sidebar_left, notes_top + text_padding, "Notes")
+    
+    # Draw horizontal separator between todos and notes
+    if draw_shapes:
+        c.setStrokeColor(css_color_to_hex(GRIDLINE_COLOR))
+        c.setLineWidth(0.5)
+        c.line(sidebar_left, notes_top, sidebar_right, notes_top)
+    
+    # Draw notes lines
+    for i in range(NOTES_LINES):
+        y = notes_top - 20 - (i * notes_line_height)
+        
+        if draw_shapes:
+            c.setStrokeColor(css_color_to_hex(GRIDLINE_COLOR))
+            c.setLineWidth(0.5)
+            c.line(sidebar_left, y, sidebar_right, y)
+
+
 def render_time_grid(
     c,
     date_label,
@@ -604,6 +705,14 @@ def render_schedule_pdf(
             draw_text=draw_text,
             draw_shapes=draw_shapes,
         )
+
+    # Sidebar (Tasks/Todos + Notes)
+    render_sidebar(
+        c,
+        layout,
+        draw_text=draw_text,
+        draw_shapes=draw_shapes,
+    )
 
     # Events
     get_title_font_and_offset, get_time_font_and_offset = init_text_helpers(hour_height)

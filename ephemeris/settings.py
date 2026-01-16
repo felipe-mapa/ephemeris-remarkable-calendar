@@ -115,11 +115,18 @@ ALLDAY_FROM   = os.getenv("DOC_ALLDAY_BOUNDARY",   "grid").lower()
 MINICAL_TEXT_PADDING= float(os.getenv("DOC_MINICAL_TEXT_PADDING", 5))
 MINICAL_OFFSET = float(os.getenv("DOC_MINICAL_POSITION_OFFSET", 0))
 PDF_GRID_BOTTOM_BUFFER = float(os.getenv("DOC_GRID_BOTTOM_PADDING", 9))
+
+# Sidebar layout (Tasks/Todos + Notes on right side)
+SIDEBAR_ENABLED = os.getenv("DOC_SIDEBAR_ENABLED", "true").lower() in ("1", "true", "yes")
+SIDEBAR_WIDTH = float(os.getenv("DOC_SIDEBAR_WIDTH", 180))  # Width in points
+SIDEBAR_GAP = float(os.getenv("DOC_SIDEBAR_GAP", 15))  # Gap between calendar and sidebar
+TODO_LINES = int(os.getenv("DOC_TODO_LINES", 12))  # Number of todo checkbox lines
+NOTES_LINES = int(os.getenv("DOC_NOTES_LINES", 8))  # Number of notes lines
 minical_mode = os.getenv("DOC_MINICAL_MODE", "full").strip().lower()
 DRAW_MINICALS = minical_mode not in ("false", "0", "no", "disabled", "disable")
 PDF_PAGE_SIZE= os.getenv("DOC_PAGE_DIMENSIONS", "1404x1872")  # Default to reMarkable 2
 PDF_DPI = float(os.getenv("DOC_PAGE_DPI", "226")) 
-FOOTER = os.getenv("DOC_FOOTER_TEXT", "E P H E M E R I S")
+FOOTER = os.getenv("DOC_FOOTER_TEXT", "")
 
 # Behavior
 _raw_blocked_words = os.getenv("APP_FILTER_LIST", "cancelled,canceled")

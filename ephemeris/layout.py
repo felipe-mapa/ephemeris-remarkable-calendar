@@ -40,7 +40,19 @@ def get_layout_config(width, height, start_hour=6, end_hour=17):
 
     # Compute horizontal extents for the grid
     grid_left  = page_left + time_label_width
-    grid_right = page_right
+    
+    # If sidebar is enabled, reduce grid_right to make room for Tasks/Todos + Notes
+    if settings.SIDEBAR_ENABLED:
+        sidebar_width = settings.SIDEBAR_WIDTH
+        sidebar_gap = settings.SIDEBAR_GAP
+        grid_right = page_right - sidebar_width - sidebar_gap
+        sidebar_left = grid_right + sidebar_gap
+        sidebar_right = page_right
+    else:
+        grid_right = page_right
+        sidebar_left = None
+        sidebar_right = None
+        sidebar_width = 0
 
     # Recompute grid_top so it floats up when we skip the minis or all‑day band
     # Start from the page_top
@@ -110,7 +122,11 @@ def get_layout_config(width, height, start_hour=6, end_hour=17):
         "text_padding":     text_padding,
         "page_bottom":      page_bottom,
         "mini_block_h":     mini_block_h,
-
+        # Sidebar layout
+        "sidebar_enabled":  settings.SIDEBAR_ENABLED,
+        "sidebar_left":     sidebar_left,
+        "sidebar_right":    sidebar_right,
+        "sidebar_width":    sidebar_width,
     }
 
 def pixels_to_points(pixels, dpi):

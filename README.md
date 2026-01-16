@@ -46,10 +46,24 @@ cd ephemeris-remarkable-calendar/scripts
 
 ## Test Scripts
 
+Test calendar designs without fetching real events:
+
 ```bash
-# Year calendar only
-./generate_year_calendar.sh   # Current year
-./generate_year_calendar.sh 2025  # Specific year
+# Daily calendar with sample events
+python scripts/test_design.py
+
+# Daily calendar for specific date
+python scripts/test_design.py --date 2026-01-20
+
+# Empty daily calendar
+python scripts/test_design.py --empty
+
+# Year calendar
+python scripts/test_design.py --year
+python scripts/test_design.py --year 2026
+
+# Custom output path
+python scripts/test_design.py --output output/my_test.pdf
 ```
 
 ## Configuration
