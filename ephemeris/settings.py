@@ -70,8 +70,8 @@ DATE_RANGE = os.getenv("TIME_DATE_RANGE", "today")
 TIME_FORMAT    = os.getenv("TIME_FORMAT", "24")
 USE_24H        = TIME_FORMAT == "24"
 
-_raw_start = os.getenv("TIME_DISPLAY_START", "6")
-_raw_end   = os.getenv("TIME_DISPLAY_END",   "21")
+_raw_start = os.getenv("TIME_DISPLAY_START", "8")
+_raw_end   = os.getenv("TIME_DISPLAY_END",   "18")
 _raw_exclude_before = os.getenv("TIME_FILTER_MIN_HOUR", "0")
 
 
