@@ -178,6 +178,10 @@ def draw_mini_cal(
                 else:
                     c.setFillGray(0)  # Normal color for current month
 
+            # Skip drawing for None values (blank cells)
+            if day is None:
+                continue
+                
             if highlight_day and day == highlight_day:
                 if draw_shapes:
                     c.setFillColor(black)
@@ -717,11 +721,6 @@ def render_schedule_pdf(
         
         first_of_month = today.replace(day=1)
         
-        if first_of_month.month == 12:
-            next_month = first_of_month.replace(year=first_of_month.year+1, month=1)
-        else:
-            next_month = first_of_month.replace(month=first_of_month.month+1)
-
         cal = calendar.Calendar(firstweekday=6)
         
         # Create a custom calendar view that shows days flowing between months
@@ -745,8 +744,12 @@ def render_schedule_pdf(
                 if current_date.month == first_of_month.month and current_date.year == first_of_month.year:
                     week.append(current_date.day)
                 else:
-                    # Show actual day numbers for all non-current month days
-                    week.append(current_date.day)
+                    # Don't show next month days if current month is December
+                    if first_of_month.month == 12 and current_date.year > first_of_month.year:
+                        week.append(None)  # Use None for empty cells
+                    else:
+                        # Show actual day numbers for all other non-current month days
+                        week.append(current_date.day)
                 current_date += timedelta(days=1)
             weeks.append(week)
 
