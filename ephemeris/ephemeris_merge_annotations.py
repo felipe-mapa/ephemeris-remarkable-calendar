@@ -341,8 +341,6 @@ def upload_rmdoc(rmdoc_path, doc_name):
         return True
     else:
         print(f"❌ Upload failed: {result.stderr}")
-        print("❌ Could not upload calendar with preserved annotations.")
-        print("� Your annotations are safe on the device, but the calendar was not updated.")
         print("💡 Please check your reMarkable connection and try again.")
         return False
 
