@@ -120,6 +120,7 @@ PDF_GRID_BOTTOM_BUFFER = float(os.getenv("DOC_GRID_BOTTOM_PADDING", 9))
 SIDEBAR_ENABLED = os.getenv("DOC_SIDEBAR_ENABLED", "true").lower() in ("1", "true", "yes")
 SIDEBAR_WIDTH = float(os.getenv("DOC_SIDEBAR_WIDTH", 180))  # Width in points
 SIDEBAR_GAP = float(os.getenv("DOC_SIDEBAR_GAP", 15))  # Gap between calendar and sidebar
+SIDEBAR_PADDING = float(os.getenv("DOC_SIDEBAR_PADDING", 5))  # Left padding inside sidebar
 TODO_LINES = int(os.getenv("DOC_TODO_LINES", 12))  # Number of todo checkbox lines
 NOTES_LINES = int(os.getenv("DOC_NOTES_LINES", 8))  # Number of notes lines
 minical_mode = os.getenv("DOC_MINICAL_MODE", "full").strip().lower()

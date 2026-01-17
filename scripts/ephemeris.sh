@@ -22,12 +22,14 @@ usage() {
     echo "Commands:"
     echo "  init <year>      Initialize calendar for year (fetch all events, generate PDF)"
     echo "  refresh [days]   Refresh next N days (default: $DEFAULT_DAYS)"
-    echo "  upload           Upload existing PDF to reMarkable"
+    echo "  upload           Upload existing PDF to reMarkable (preserves annotations)"
     echo ""
     echo "Examples:"
     echo "  $0 init 2026"
     echo "  $0 refresh 14"
     echo "  $0 upload"
+    echo ""
+    echo "Note: Upload automatically merges annotations from existing calendar"
 }
 
 # Fetch events and save to database
@@ -63,28 +65,50 @@ clear_events() {
     "$VENV_PYTHON" "$SCRIPT_DIR/../ephemeris/calendar_db_sqlite.py" clear_range "$start_date" "$end_date"
 }
 
+# Merge annotations from existing PDF and upload
+merge_annotations() {
+    local year=$1
+    local pdf_file=$2
+    
+    echo -e "${BLUE}Running annotation preservation and upload...${NC}"
+    
+    # The Python script handles everything:
+    # 1. Check for existing calendar on reMarkable
+    # 2. Download .rmdoc with original .rm annotation files
+    # 3. Replace PDF with new calendar, keeping .rm files
+    # 4. Upload the rebuilt .rmdoc
+    "$VENV_PYTHON" "$SCRIPT_DIR/ephemeris_merge_annotations.py" && return 0
+    
+    return 1
+}
+
 # Upload to reMarkable
 upload_to_remarkable() {
     local file_path=$1
     local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     local year=$(basename "$file_path" | grep -o '[0-9]\{4\}')
-    local temp_file="$script_dir/../output/Calendar ${year}.pdf"
     
-    echo -e "${YELLOW}Uploading to reMarkable using Docker...${NC}"
-    
-    # Copy file with correct name
-    cp "$file_path" "$temp_file"
-    
-    # Use Docker image with rmapi included
-    # Upload with the correct name
-    docker run --rm \
-        -v "$script_dir/../output:/app/output" \
-        -v "$script_dir/../config/.rmapi:/root/.config/rmapi" \
-        ghcr.io/rmitchellscott/ephemeris:main-rmapi0.0.32 \
-        rmapi put --force "/app/output/Calendar ${year}.pdf"
-    
-    # Clean up temporary file
-    rm -f "$temp_file"
+    # First try to preserve annotations and upload
+    if merge_annotations "$year" "$file_path"; then
+        echo -e "${GREEN}✅ Annotations preserved successfully!${NC}"
+    else
+        # Fallback to normal upload
+        local temp_file="$script_dir/../output/Calendar ${year}.pdf"
+        echo -e "${YELLOW}Uploading to reMarkable using Docker...${NC}"
+        
+        # Copy file with correct name
+        cp "$file_path" "$temp_file"
+        
+        # Use Docker image with rmapi included
+        docker run --rm \
+            -v "$script_dir/../output:/app/output" \
+            -v "$script_dir/../config/.rmapi:/root/.config/rmapi" \
+            ghcr.io/rmitchellscott/ephemeris:main-rmapi0.0.32 \
+            rmapi put --force "/app/output/Calendar ${year}.pdf"
+        
+        # Clean up temporary file
+        rm -f "$temp_file"
+    fi
     
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}Upload complete!${NC}"

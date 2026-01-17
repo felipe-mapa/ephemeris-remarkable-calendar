@@ -8,3 +8,6 @@ PyYAML==6.0.3
 reportlab==4.4.5
 requests==2.32.5
 webcolors==25.10.0
+PyMuPDF==1.25.5
+rmrl==0.2.1
+Pillow==11.1.0
