@@ -182,7 +182,7 @@ def draw_mini_cal(
             if day is None:
                 continue
                 
-            if highlight_day and day == highlight_day:
+            if highlight_day and day == highlight_day and is_current_month:
                 if draw_shapes:
                     c.setFillColor(black)
                     c.rect(xx, yy, cell_w, cell_h, stroke=0, fill=1)
@@ -746,6 +746,9 @@ def render_schedule_pdf(
                 else:
                     # Don't show next month days if current month is December
                     if first_of_month.month == 12 and current_date.year > first_of_month.year:
+                        week.append(None)  # Use None for empty cells
+                    # Don't show previous month days if current month is January
+                    elif first_of_month.month == 1 and current_date.year < first_of_month.year:
                         week.append(None)  # Use None for empty cells
                     else:
                         # Show actual day numbers for all other non-current month days
