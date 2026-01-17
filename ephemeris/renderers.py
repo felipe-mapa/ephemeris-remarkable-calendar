@@ -123,8 +123,8 @@ def draw_mini_cal(
     # Month label
     month_name = calendar.month_name[month]
     if draw_text:
-        c.setFont("Montserrat-Regular", 6)
-        c.drawCentredString(x + mini_w/2, y + mini_h + 4, f"{month_name} {year}")
+        c.setFont("Montserrat-Regular", 5)  # Smaller font
+        c.drawCentredString(x + mini_w/2, y + mini_h + 10, f"{month_name} {year}")
     logger.log("VISUAL","Drawing mini-calendar for {}.", month_name)
     logger.log("VISUAL","    Height: {h:.2f}, Width: {w:.2f}",h=mini_h,w=mini_w)
     # Weekday headers
@@ -132,28 +132,51 @@ def draw_mini_cal(
     cell_w = mini_w / 7
     cell_h = 8
     if draw_text:
-        c.setFont("Montserrat-Regular", 6)
+        c.setFont("Montserrat-Regular", 5)  # Smaller font
         for i, d in enumerate(days):
             hx = x + i*cell_w + cell_w/2
-            c.drawCentredString(hx, y + mini_h - 6, d)
+            c.drawCentredString(hx, y + mini_h, d)
 
     valid = getattr(c, "_valid_destinations", set())
     # Day numbers
     for row_i, week in enumerate(weeks):
         for col_i, day in enumerate(week):
-            if day == 0:
-                continue
-
             # compute the top‑left of this cell
             xx = x + col_i*cell_w
-            yy = y + mini_h - 8 - (row_i+1)*cell_h
+            yy = y + mini_h - (row_i+1)*cell_h
 
             # center of the cell
             cx = xx + cell_w/2
             # vertical offset: roughly center. adjust v_off if you like.
             v_off = cell_h/2 - 2
+            
+            # Check if this day is from the current month
+            # We need to check the actual date to determine if it's in the target month
+            is_current_month = True
+            
+            # Calculate the actual date for this cell
+            # Start from the first Sunday of the calendar
+            first_of_month = datetime(year, month, 1)
+            cal = calendar.Calendar(firstweekday=6)  # Sunday is first day
+            
+            # Find the first Sunday on or before the 1st
+            start_date = first_of_month.date()
+            while start_date.weekday() != 6:  # 6 = Sunday
+                start_date = start_date - timedelta(days=1)
+            
+            # Calculate the date for this cell
+            cell_date = start_date + timedelta(days=row_i * 7 + col_i)
+            
+            # Check if the cell date is in the target month
+            if cell_date.month != month or cell_date.year != year:
+                is_current_month = False
+            
             if draw_text:
-                c.setFont("Montserrat-Regular", 6)
+                c.setFont("Montserrat-Regular", 5)  # Smaller font
+                if not is_current_month:
+                    c.setFillGray(0.6)  # Lighter color for prev/next month days
+                else:
+                    c.setFillGray(0)  # Normal color for current month
 
             if highlight_day and day == highlight_day:
                 if draw_shapes:
@@ -162,28 +185,31 @@ def draw_mini_cal(
 
                 if draw_text:
                     c.setFillColor(white)
-                    c.setFont("Montserrat-SemiBold", 6)
+                    c.setFont("Montserrat-SemiBold", 5)  # Smaller font
                     c.drawCentredString(cx, yy + v_off, str(day))
                     c.setFillColor(black)
-                    c.setFont("Montserrat-Regular", 6)
+                    c.setFont("Montserrat-Regular", 5)  # Smaller font
 
             else:
-                # internal link rectangle
-                dest_name = f"{year:04d}-{month:02d}-{day:02d}"
-                if dest_name in valid:
-                    if settings.CREATE_LINKS:
-                        x1, y1 = xx, yy
-                        x2, y2 = xx + cell_w, yy + cell_h
-                        c.linkAbsolute(
-                            "", dest_name,
-                            Rect=(x1, y1, x2, y2),
-                            Border='[0 0 0]'
-                        )
-                    if settings.INDICATE_DAYS:
-                        c.setFont("Montserrat-Medium", 6)
+                # internal link rectangle - only for current month days
+                if is_current_month:
+                    dest_name = f"{year:04d}-{month:02d}-{day:02d}"
+                    if dest_name in valid:
+                        if settings.CREATE_LINKS:
+                            x1, y1 = xx, yy
+                            x2, y2 = xx + cell_w, yy + cell_h
+                            c.linkAbsolute(
+                                "", dest_name,
+                                Rect=(x1, y1, x2, y2),
+                                Border='[0 0 0]'
+                            )
+                        if settings.INDICATE_DAYS:
+                            c.setFont("Montserrat-Medium", 5)  # Smaller font
                 # normal day, centered
                 if draw_text:
                     c.drawCentredString(cx, yy + v_off, str(day))
+                    # Reset fill color to black for next iteration
+                    c.setFillGray(0)
 
 def draw_rect_with_optional_round(c, x, y, w, h, radius,
                                   round_top=True, round_bottom=True,
@@ -293,20 +319,38 @@ def render_sidebar(
     sidebar_height = grid_top - grid_bottom
     sidebar_width = sidebar_right - sidebar_left
     
-    # Calculate section heights based on line counts
-    total_lines = TODO_LINES + NOTES_LINES
-    todo_height = sidebar_height * (TODO_LINES / total_lines)
-    notes_height = sidebar_height * (NOTES_LINES / total_lines)
+    # Reserve space for headings and separators
+    heading_height = 20  # Space for heading text and line
+    separator_height = 10  # Space between sections
+    
+    # Give Tasks section 60% of the available space and Notes 40%
+    tasks_ratio = 0.6
+    notes_ratio = 0.4
+    
+    # Calculate available height for lines
+    available_height = sidebar_height - (2 * heading_height) - separator_height
+    
+    # Calculate section heights based on ratios
+    todo_available_height = available_height * tasks_ratio
+    notes_available_height = available_height * notes_ratio
+    
+    # Calculate line heights
+    todo_line_height = todo_available_height / TODO_LINES
+    notes_line_height = notes_available_height / NOTES_LINES
+    
+    # Calculate actual section heights
+    todo_height = (TODO_LINES * todo_line_height) + heading_height
+    notes_height = (NOTES_LINES * notes_line_height) + heading_height
     
     # Positions
     todo_top = grid_top
     todo_bottom = todo_top - todo_height
-    notes_top = todo_bottom
+    notes_top = todo_bottom - separator_height
     notes_bottom = grid_bottom
     
-    # Line spacing within sections
-    todo_line_height = (todo_height - 20) / TODO_LINES  # 20 for header
-    notes_line_height = (notes_height - 20) / NOTES_LINES  # 20 for header
+    # Line spacing within sections - use calculated values
+    # todo_line_height already calculated above
+    # notes_line_height already calculated above
     
     checkbox_size = 10
     checkbox_margin = 5
@@ -315,10 +359,19 @@ def render_sidebar(
     logger.log("VISUAL", "    Sidebar left: {l:.2f}, right: {r:.2f}", l=sidebar_left, r=sidebar_right)
     
     # ─── TASKS/TODOS SECTION ───────────────────────────
+    sidebar_text_padding = 10  # Extra left padding for sidebar content
     if draw_text:
         c.setFont("Montserrat-SemiBold", 10)
         c.setFillGray(0)
-        c.drawString(sidebar_left, todo_top + text_padding, "Tasks / Todos")
+        c.drawString(sidebar_left + sidebar_text_padding, todo_top + text_padding, "Tasks / Todos")
+    
+    # Draw line under Tasks/Todos heading
+    if draw_shapes:
+        c.setStrokeColor(css_color_to_hex(GRIDLINE_COLOR))
+        c.setLineWidth(0.5)
+        # Center the line - calculate center position
+        line_center_y = todo_top - 0.5
+        c.line(sidebar_left + sidebar_text_padding, line_center_y, sidebar_right, line_center_y)
     
     # Draw vertical line on left edge of sidebar
     if draw_shapes:
@@ -328,44 +381,48 @@ def render_sidebar(
     
     # Draw todo lines with checkboxes
     for i in range(TODO_LINES):
-        y = todo_top - 20 - (i * todo_line_height)
+        y = todo_top - heading_height + 5 - (i * todo_line_height)
         
         # Draw checkbox (circle)
         if draw_shapes:
             c.setStrokeGray(0)
             c.setLineWidth(0.5)
-            checkbox_x = sidebar_left + checkbox_margin
+            checkbox_x = sidebar_left + sidebar_text_padding
             checkbox_y = y - checkbox_size / 2
             c.circle(checkbox_x + checkbox_size / 2, checkbox_y + checkbox_size / 2, checkbox_size / 2, stroke=1, fill=0)
         
-        # Draw line for writing
+        # Draw line for writing (positioned below checkbox)
         if draw_shapes:
             c.setStrokeColor(css_color_to_hex(GRIDLINE_COLOR))
             c.setLineWidth(0.5)
-            line_x_start = sidebar_left + checkbox_margin + checkbox_size + 5
+            line_x_start = checkbox_x + checkbox_size + 5
             line_x_end = sidebar_right
-            c.line(line_x_start, y, line_x_end, y)
+            line_y = y - checkbox_size / 2  # Center line with checkbox
+            c.line(line_x_start, line_y, line_x_end, line_y)
     
     # ─── NOTES SECTION ─────────────────────────────────
     if draw_text:
         c.setFont("Montserrat-SemiBold", 10)
         c.setFillGray(0)
-        c.drawString(sidebar_left, notes_top + text_padding, "Notes")
+        c.drawString(sidebar_left + sidebar_text_padding, notes_top + text_padding, "Notes")
     
-    # Draw horizontal separator between todos and notes
+    # Draw line under Notes heading to match Tasks/Todos exactly
     if draw_shapes:
         c.setStrokeColor(css_color_to_hex(GRIDLINE_COLOR))
         c.setLineWidth(0.5)
-        c.line(sidebar_left, notes_top, sidebar_right, notes_top)
+        # Position the line at the same relative position as Tasks/Todos
+        line_center_y = notes_top - 0.5
+        c.line(sidebar_left + sidebar_text_padding, line_center_y, sidebar_right, line_center_y)
     
     # Draw notes lines
-    for i in range(NOTES_LINES):
+    for i in range(NOTES_LINES + 1):  # Add one extra line
+        # Start notes lines at same relative position as todo lines
         y = notes_top - 20 - (i * notes_line_height)
         
         if draw_shapes:
             c.setStrokeColor(css_color_to_hex(GRIDLINE_COLOR))
             c.setLineWidth(0.5)
-            c.line(sidebar_left, y, sidebar_right, y)
+            c.line(sidebar_left + sidebar_text_padding, y, sidebar_right, y)
 
 
 def render_time_grid(
@@ -408,7 +465,7 @@ def render_time_grid(
         if draw_shapes:
             if hour == layout["start_hour"]:
                 c.setStrokeGray(0)
-                c.setLineWidth(1)
+                c.setLineWidth(0.5)
             else:
                 c.setStrokeColor(css_color_to_hex(GRIDLINE_COLOR))
                 c.setLineWidth(0.5)
@@ -579,15 +636,15 @@ def render_schedule_pdf(
         if settings.MONOCHROME:
             c.setStrokeGray(0)
         else:
-            c.setStrokeGray(0.4)
-        c.setLineWidth(1)
+            c.setStrokeGray(0.2)  # Lighter color to match other headings
+        c.setLineWidth(0.5)  # Less bold to match other headings
         c.line(page_left, sep_y, page_right, sep_y)
 
     # Mini Calendar Definitions
-    mini_w       = 80
+    mini_w       = 120  # Make wider to accommodate extended view
     mini_h       = MINICAL_HEIGHT
     gap          = mini_block_gap
-    total_w = mini_w + (0 if MINICAL_ONLY_CURRENT else mini_w + gap)
+    total_w = mini_w  # Only one calendar now
 
     
     # Pre-validate mini-calendar dimensions - disable if they won't render safely
@@ -603,24 +660,17 @@ def render_schedule_pdf(
         logger.warning("Page dimensions {}×{} points with current layout cannot safely render mini-calendars", width, height)
         DRAW_MINICALS = False  # Dynamically disable for this render
     elif DRAW_MINICALS:
-        if MINICAL_ALIGN == "left":
-            x_start = page_left
-        elif MINICAL_ALIGN == "grid":
-            x_start = grid_left
-        elif MINICAL_ALIGN == "center":
-            x_start = page_left + ((page_right - page_left) - total_w) / 2
-        else:  # right
-            left_offset = MINICAL_OFFSET
-            x_start     = page_right - total_w - left_offset
+        # Align calendar to the right of the page
+        x_start = page_right - mini_w + 5  # Position calendar so its right edge aligns with page_right
     
 
     # All Day Events
-    band_left = page_left if ALLDAY_FROM == "margin" else grid_left
+    band_left = page_left  # Always align with left margin
     
     if DRAW_MINICALS:
-        band_right  = x_start - mini_block_gap
+        band_right  = (page_left + page_right) / 1.6  # Extend to center of screen
     else:
-        band_right = page_right
+        band_right = (page_left + page_right) / 1.6  # Always extend to center
     
     band_width  = band_right - band_left
     
@@ -639,12 +689,18 @@ def render_schedule_pdf(
     # Label
     label_lines = ["All-Day", "Events"]
     
-    all_day_label_font_size = (band_height * 0.33) / (len(label_lines) * 1.2)
+    all_day_label_font_size = (band_height * 0.2) / (len(label_lines))
     
     x_label = band_left + text_padding
 
     if DRAW_MINICALS:
         today = date_label
+        
+        # Get previous month
+        if today.month == 1:
+            prev_month = today.replace(year=today.year-1, month=12)
+        else:
+            prev_month = today.replace(month=today.month-1)
         
         first_of_month = today.replace(day=1)
         
@@ -655,15 +711,37 @@ def render_schedule_pdf(
 
         cal = calendar.Calendar(firstweekday=6)
         
-        weeks1 = cal.monthdayscalendar(first_of_month.year, first_of_month.month)
+        # Create a custom calendar view that shows days flowing between months
+        weeks = []
         
-        weeks2 = cal.monthdayscalendar(next_month.year, next_month.month)
+        # Get the first day of the month and how many days it has
+        first_of_month = today.replace(day=1)
+        days_in_month = calendar.monthrange(first_of_month.year, first_of_month.month)[1]
+        
+        # Find the first Sunday (firstweekday=6) on or before the 1st
+        start_date = first_of_month
+        while start_date.weekday() != 6:  # 6 = Sunday
+            start_date = start_date - timedelta(days=1)
+        
+        # Generate 6 weeks of dates starting from that Sunday
+        current_date = start_date
+        for week_num in range(6):
+            week = []
+            for day_num in range(7):
+                # Check if current_date is in the target month
+                if current_date.month == first_of_month.month and current_date.year == first_of_month.year:
+                    week.append(current_date.day)
+                else:
+                    # Show actual day numbers for all non-current month days
+                    week.append(current_date.day)
+                current_date += timedelta(days=1)
+            weeks.append(week)
 
         draw_mini_cal(
             c,
             first_of_month.year,
             first_of_month.month,
-            weeks1,
+            weeks,
             x_start,
             y_cal,
             mini_w,
@@ -672,19 +750,6 @@ def render_schedule_pdf(
             draw_text=draw_text,
             draw_shapes=draw_shapes,
         )
-        if not MINICAL_ONLY_CURRENT:
-            draw_mini_cal(
-                c,
-                next_month.year,
-                next_month.month,
-                weeks2,
-                x_start + mini_w + gap,
-                y_cal,
-                mini_w,
-                mini_h,
-                draw_text=draw_text,
-                draw_shapes=draw_shapes,
-            )
 
     # Main Grid
     if all_day_in_grid:
@@ -752,7 +817,12 @@ def render_schedule_pdf(
         box_height = y_start - y_end
 
         box_width = total_width * width_frac
-
+        
+        # Limit box width to center of screen
+        max_width = ((layout["page_left"] + layout["page_right"]) / 2) - layout["grid_left"]
+        if box_width > max_width:
+            box_width = max_width
+        
         box_x = layout["grid_right"] - box_width  # right-align
 
         # breached_top    = (y_start_raw > layout["grid_top"])
