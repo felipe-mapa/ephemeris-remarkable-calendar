@@ -191,20 +191,32 @@ def draw_mini_cal(
                     c.setFont("Montserrat-Regular", 5)  # Smaller font
 
             else:
-                # internal link rectangle - only for current month days
-                if is_current_month:
-                    dest_name = f"{year:04d}-{month:02d}-{day:02d}"
-                    if dest_name in valid:
-                        if settings.CREATE_LINKS:
-                            x1, y1 = xx, yy
-                            x2, y2 = xx + cell_w, yy + cell_h
-                            c.linkAbsolute(
-                                "", dest_name,
-                                Rect=(x1, y1, x2, y2),
-                                Border='[0 0 0]'
-                            )
-                        if settings.INDICATE_DAYS:
-                            c.setFont("Montserrat-Medium", 5)  # Smaller font
+                # internal link rectangle - for all days (current, prev, next month)
+                # Calculate the actual date for this cell
+                first_of_month = datetime(year, month, 1)
+                cal = calendar.Calendar(firstweekday=6)  # Sunday is first day
+                
+                # Find the first Sunday on or before the 1st
+                start_date = first_of_month.date()
+                while start_date.weekday() != 6:  # 6 = Sunday
+                    start_date = start_date - timedelta(days=1)
+                
+                # Calculate the date for this cell
+                cell_date = start_date + timedelta(days=row_i * 7 + col_i)
+                
+                # Create destination name for navigation
+                dest_name = f"{cell_date.year:04d}-{cell_date.month:02d}-{cell_date.day:02d}"
+                if dest_name in valid:
+                    if settings.CREATE_LINKS:
+                        x1, y1 = xx, yy
+                        x2, y2 = xx + cell_w, yy + cell_h
+                        c.linkAbsolute(
+                            "", dest_name,
+                            Rect=(x1, y1, x2, y2),
+                            Border='[0 0 0]'
+                        )
+                    if settings.INDICATE_DAYS and is_current_month:
+                        c.setFont("Montserrat-Medium", 5)  # Smaller font
                 # normal day, centered
                 if draw_text:
                     c.drawCentredString(cx, yy + v_off, str(day))
@@ -696,11 +708,12 @@ def render_schedule_pdf(
     if DRAW_MINICALS:
         today = date_label
         
-        # Get previous month
+        # Get previous month - handle dates that don't exist in previous month
         if today.month == 1:
-            prev_month = today.replace(year=today.year-1, month=12)
+            prev_month = today.replace(year=today.year-1, month=12, day=1)
         else:
-            prev_month = today.replace(month=today.month-1)
+            # Use day=1 to avoid errors when current day doesn't exist in previous month
+            prev_month = today.replace(month=today.month-1, day=1)
         
         first_of_month = today.replace(day=1)
         
