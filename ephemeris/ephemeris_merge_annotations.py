@@ -61,17 +61,30 @@ def find_calendar_document(year, output_dir):
     
     # Parse output to find the calendar
     # Format: [d] or [f] followed by document name
+    calendar_docs = []
     for line in result.stdout.split('\n'):
         line = line.strip()
         if f"Calendar {year}" in line:
             # Found it - extract the path
             if line.startswith('[f]'):
                 doc_name = line[3:].strip()
+                calendar_docs.append(doc_name)
                 print(f"Found document: {doc_name}")
-                return doc_name
     
-    print(f"Calendar {year} not found on reMarkable")
-    return None
+    # If we found exactly one, return it
+    if len(calendar_docs) == 1:
+        return calendar_docs[0]
+    elif len(calendar_docs) > 1:
+        print(f"Found {len(calendar_docs)} calendar documents, using first one: {calendar_docs[0]}")
+        return calendar_docs[0]
+    else:
+        print(f"Calendar {year} not found on reMarkable")
+        print("Available documents:")
+        for line in result.stdout.split('\n'):
+            line = line.strip()
+            if line and ('Calendar' in line.lower() or '2026' in line):
+                print(f"  - {line}")
+        return None
 
 
 def download_raw_document_with_annotations(doc_name, output_dir):
@@ -309,35 +322,29 @@ def upload_rmdoc(rmdoc_path, doc_name):
     """Upload the .rmdoc file to reMarkable, replacing the existing document."""
     print(f"Uploading .rmdoc to reMarkable...")
     
-    output_dir = os.path.dirname(rmdoc_path)
     config_path = get_config_path()
-    
-    # First, delete the existing document
-    print(f"Removing old document: {doc_name}")
-    cmd_rm = [
-        'docker', 'run', '--rm',
-        '-v', f"{config_path}:/root/.config/rmapi",
-        'ghcr.io/rmitchellscott/ephemeris:main-rmapi0.0.32',
-        'rmapi', 'rm', doc_name
-    ]
-    subprocess.run(cmd_rm, capture_output=True, text=True)
-    
-    # Upload the new .rmdoc
-    # rmapi 'put' command can upload .rmdoc files directly
-    # Use the original document name so it appears correctly on reMarkable
     rmdoc_filename = os.path.basename(rmdoc_path)
-    print(f"Uploading new document: {rmdoc_filename}")
+    
+    # Upload using --force to replace existing document
+    print(f"Uploading document: {rmdoc_filename}")
     cmd_put = [
         'docker', 'run', '--rm',
         '-v', f"{config_path}:/root/.config/rmapi",
         '-v', f"{rmdoc_path}:/app/{rmdoc_filename}",
         'ghcr.io/rmitchellscott/ephemeris:main-rmapi0.0.32',
-        'rmapi', 'put', f'/app/{rmdoc_filename}'
+        'rmapi', 'put', '--force', f'/app/{rmdoc_filename}'
     ]
     result = subprocess.run(cmd_put, capture_output=True, text=True)
-    print(f"Upload result: {result.stdout} {result.stderr}")
     
-    return result.returncode == 0
+    if result.returncode == 0:
+        print("✅ Upload successful!")
+        return True
+    else:
+        print(f"❌ Upload failed: {result.stderr}")
+        print("❌ Could not upload calendar with preserved annotations.")
+        print("� Your annotations are safe on the device, but the calendar was not updated.")
+        print("💡 Please check your reMarkable connection and try again.")
+        return False
 
 
 def upload_merged(pdf_path, year):
@@ -359,7 +366,7 @@ def upload_merged(pdf_path, year):
     
     # Clean up
     os.remove(temp_file)
-    print("Upload complete!")
+
 
 def main():
     """Main function"""
@@ -385,8 +392,9 @@ def main():
         
         if not doc_name:
             print("No existing calendar found on reMarkable.")
-            print("Uploading new PDF without annotation merge...")
+            print("📤 Uploading new calendar...")
             upload_merged(new_pdf_path, year)
+            print("\n✅ Successfully uploaded new calendar!")
             return
         
         # Step 2: Download raw document (.rmdoc with original PDF and .rm files)
@@ -395,9 +403,9 @@ def main():
         
         if not rmdoc_path:
             print("Could not download raw document.")
-            print("Uploading new PDF without annotation merge...")
-            upload_merged(new_pdf_path, year)
-            return
+            print("❌ Cannot upload without preserving annotations.")
+            print("💡 Please check your reMarkable connection and try again.")
+            sys.exit(1)
         
         # Step 3: Extract contents from .rmdoc
         extract_dir = os.path.join(temp_dir_raw, "extracted")
@@ -405,15 +413,15 @@ def main():
         
         if not original_pdf or not doc_uuid:
             print("Could not extract original PDF from .rmdoc.")
-            print("Uploading new PDF without annotation merge...")
-            upload_merged(new_pdf_path, year)
-            return
+            print("❌ Cannot upload without preserving annotations.")
+            print("💡 The existing document may be corrupted.")
+            sys.exit(1)
         
         if not has_annotations:
             print("No annotations found in document.")
-            print("Uploading new PDF...")
+            print("📤 Uploading updated calendar...")
             upload_merged(new_pdf_path, year)
-            print("\n✅ Successfully uploaded (no annotations to merge)!")
+            print("\n✅ Successfully uploaded updated calendar!")
             return
         
         # Step 4: Rebuild .rmdoc with new PDF while preserving original .rm annotation files
@@ -423,9 +431,9 @@ def main():
         
         if not rebuilt:
             print("Failed to rebuild .rmdoc with new PDF.")
-            print("Uploading new PDF without annotations...")
-            upload_merged(new_pdf_path, year)
-            return
+            print("❌ Cannot upload without preserving annotations.")
+            print("💡 The calendar structure may be incompatible.")
+            sys.exit(1)
         
         # Step 5: Upload the rebuilt .rmdoc
         success = upload_rmdoc(new_rmdoc_path, doc_name)
@@ -433,7 +441,9 @@ def main():
         if success:
             print("\n✅ Successfully updated calendar with preserved annotations!")
         else:
-            print("\n⚠️  Upload may have failed. Check reMarkable for the document.")
+            print("\n❌ Failed to upload calendar with preserved annotations.")
+            print("💡 Your original calendar with annotations remains unchanged on the device.")
+            sys.exit(1)
         
     except Exception as e:
         print(f"Error: {e}")

@@ -89,32 +89,14 @@ upload_to_remarkable() {
     local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     local year=$(basename "$file_path" | grep -o '[0-9]\{4\}')
     
-    # First try to preserve annotations and upload
+    # Only upload with annotations preserved
     if merge_annotations "$year" "$file_path"; then
         echo -e "${GREEN}✅ Annotations preserved successfully!${NC}"
-    else
-        # Fallback to normal upload
-        local temp_file="$script_dir/../output/Calendar ${year}.pdf"
-        echo -e "${YELLOW}Uploading to reMarkable using Docker...${NC}"
-        
-        # Copy file with correct name
-        cp "$file_path" "$temp_file"
-        
-        # Use Docker image with rmapi included
-        docker run --rm \
-            -v "$script_dir/../output:/app/output" \
-            -v "$script_dir/../config/.rmapi:/root/.config/rmapi" \
-            ghcr.io/rmitchellscott/ephemeris:main-rmapi0.0.32 \
-            rmapi put --force "/app/output/Calendar ${year}.pdf"
-        
-        # Clean up temporary file
-        rm -f "$temp_file"
-    fi
-    
-    if [ $? -eq 0 ]; then
         echo -e "${GREEN}Upload complete!${NC}"
     else
-        echo -e "${RED}Upload failed. Please check your rmapi configuration in config/.rmapi${NC}"
+        echo -e "${RED}❌ Failed to upload calendar with preserved annotations.${NC}"
+        echo -e "${YELLOW}💡 Your original calendar with annotations remains unchanged on the device.${NC}"
+        echo -e "${YELLOW}💡 Please check your reMarkable connection and try again.${NC}"
         exit 1
     fi
 }
