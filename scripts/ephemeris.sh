@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Ephemeris Calendar Management Script
-# Commands: init, refresh, upload
+# Commands: generate, generate-full, upload
 
 set -e
 
@@ -20,13 +20,14 @@ usage() {
     echo "Usage: $0 <command> [options]"
     echo ""
     echo "Commands:"
-    echo "  init <year>      Initialize calendar for year (fetch all events, generate PDF)"
-    echo "  refresh [days]   Refresh next N days (default: $DEFAULT_DAYS)"
+    echo "  generate [days]  Generate calendar, fetching events for next N days (default: $DEFAULT_DAYS)"
+    echo "  generate-full    Generate calendar for entire year"
     echo "  upload           Upload existing PDF to reMarkable (preserves annotations)"
     echo ""
     echo "Examples:"
-    echo "  $0 init 2026"
-    echo "  $0 refresh 14"
+    echo "  $0 generate"
+    echo "  $0 generate 14"
+    echo "  $0 generate-full"
     echo "  $0 upload"
     echo ""
     echo "Note: Upload automatically merges annotations from existing calendar"
@@ -77,7 +78,7 @@ merge_annotations() {
     # 2. Download .rmdoc with original .rm annotation files
     # 3. Replace PDF with new calendar, keeping .rm files
     # 4. Upload the rebuilt .rmdoc
-    "$VENV_PYTHON" "$SCRIPT_DIR/ephemeris_merge_annotations.py" && return 0
+    "$VENV_PYTHON" "$SCRIPT_DIR/../ephemeris/ephemeris_merge_annotations.py" && return 0
     
     return 1
 }
@@ -128,34 +129,13 @@ COMMAND=$1
 shift
 
 case $COMMAND in
-    init)
-        if [ $# -lt 1 ]; then
-            YEAR=$(date +%Y)
-        else
-            YEAR=$1
-        fi
-        
-        echo -e "${GREEN}Initializing calendar for $YEAR...${NC}"
-        
-        # Clear existing events for the year
-        "$VENV_PYTHON" "$SCRIPT_DIR/../ephemeris/calendar_db_sqlite.py" clear_all
-        
-        # Fetch all events for the year
-        fetch_events "$YEAR-01-01" "$YEAR-12-31"
-        
-        # Generate PDF
-        generate_pdf "$YEAR" "calendar_$YEAR.pdf"
-        
-        echo -e "${GREEN}✅ Calendar $YEAR initialized successfully!${NC}"
-        ;;
-        
-    refresh)
+    generate)
         DAYS=${1:-$DEFAULT_DAYS}
         YEAR=$(date +%Y)
         START_DATE=$(date +"%Y-%m-%d")
         END_DATE=$(date -v+${DAYS}d +"%Y-%m-%d" 2>/dev/null || date -d "+${DAYS} days" +"%Y-%m-%d")
         
-        echo -e "${GREEN}Refreshing calendar for next $DAYS days...${NC}"
+        echo -e "${GREEN}Generating calendar for next $DAYS days...${NC}"
         
         # Clear events for the refresh period
         clear_events "$START_DATE" "$END_DATE"
@@ -166,7 +146,26 @@ case $COMMAND in
         # Regenerate the full year PDF
         generate_pdf "$YEAR" "calendar_$YEAR.pdf"
         
-        echo -e "${GREEN}✅ Calendar refreshed successfully!${NC}"
+        echo -e "${GREEN}✅ Calendar generated successfully!${NC}"
+        ;;
+        
+    generate-full)
+        YEAR=${1:-$(date +%Y)}
+        START_DATE="$YEAR-01-01"
+        END_DATE="$YEAR-12-31"
+        
+        echo -e "${GREEN}Generating calendar for full year $YEAR...${NC}"
+        
+        # Clear all events for the year
+        "$VENV_PYTHON" "$SCRIPT_DIR/../ephemeris/calendar_db_sqlite.py" clear_all
+        
+        # Fetch all events for the year
+        fetch_events "$START_DATE" "$END_DATE"
+        
+        # Generate the full year PDF
+        generate_pdf "$YEAR" "calendar_$YEAR.pdf"
+        
+        echo -e "${GREEN}✅ Full year calendar generated successfully!${NC}"
         ;;
         
     upload)
@@ -175,7 +174,7 @@ case $COMMAND in
         
         if [ ! -f "$PDF_FILE" ]; then
             echo -e "${RED}Error: Calendar PDF not found at $PDF_FILE${NC}"
-            echo -e "${YELLOW}Run './ephemeris.sh init $YEAR' first${NC}"
+            echo -e "${YELLOW}Run './ephemeris.sh generate' first${NC}"
             exit 1
         fi
         

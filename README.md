@@ -26,11 +26,11 @@ cd ephemeris-remarkable-calendar/scripts
     cd ephemeris-remarkable-calendar
     ```
 
-2. **Initialize**
+2. **Generate calendar**
 
     ```bash
     cd scripts
-    ./ephemeris.sh init
+    ./ephemeris.sh generate
     ```
 
 3. **Configure calendars** (optional)
@@ -39,8 +39,8 @@ cd ephemeris-remarkable-calendar/scripts
 ## Commands
 
 ```bash
-./ephemeris.sh init 2029        # Setup  for specific year (default to current year)
-./ephemeris.sh refresh 7        # Get calendar events for next 7 days and update year calendar PDF
+./ephemeris.sh generate 7        # Get calendar events for next 7 days and update year calendar PDF
+./ephemeris.sh generate-full    # Generate calendar for entire year
 ./ephemeris.sh upload           # Upload existing PDF to reMarkable
 ```
 
@@ -50,20 +50,20 @@ Test calendar designs without fetching real events:
 
 ```bash
 # Daily calendar with sample events
-python scripts/test_design.py
+python ephemeris/test_design.py
 
 # Daily calendar for specific date
-python scripts/test_design.py --date 2026-01-20
+python ephemeris/test_design.py --date 2026-01-20
 
 # Empty daily calendar
-python scripts/test_design.py --empty
+python ephemeris/test_design.py --empty
 
 # Year calendar
-python scripts/test_design.py --year
-python scripts/test_design.py --year 2026
+python ephemeris/test_design.py --year
+python ephemeris/test_design.py --year 2026
 
 # Custom output path
-python scripts/test_design.py --output output/my_test.pdf
+python ephemeris/test_design.py --output output/my_test.pdf
 ```
 
 ## Configuration

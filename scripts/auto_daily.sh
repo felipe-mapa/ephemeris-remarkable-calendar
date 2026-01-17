@@ -4,5 +4,5 @@
 # Generates and uploads the next 30 days with annotation preservation
 
 cd "$(dirname "$0")"
-./ephemeris.sh refresh 30
+./ephemeris.sh generate 30
 ./ephemeris.sh upload
