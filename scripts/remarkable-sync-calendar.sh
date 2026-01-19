@@ -4,7 +4,13 @@
 # Only runs once per day to avoid multiple executions
 # Generates and uploads the next 7 days with annotation preservation
 
-cd "$(dirname "$0")"
+# Always show a notification to validate it's running
+TIMESTAMP=$(date '+%H:%M:%S')
+osascript -e "display notification \"🔍 Checking at $TIMESTAMP\" with title \"Remarkable Sync Calendar\" subtitle \"Running validation check\""
+
+# Use absolute paths to avoid permission issues
+SCRIPT_DIR="/Users/felipepavanela/Documents/Dev/ephemeris-remarkable-calendar/scripts"
+EPHEMERIS_SCRIPT="$SCRIPT_DIR/ephemeris.sh"
 
 # Check if already run today
 TODAY=$(date +%Y-%m-%d)
@@ -20,6 +26,7 @@ fi
 touch "$MARKER_FILE"
 
 echo "📅 Generating calendar for next 7 days (unlock trigger)..."
+cd "$SCRIPT_DIR" || exit 1
 ./ephemeris.sh generate 7
 ./ephemeris.sh upload
 
