@@ -37,9 +37,9 @@ def init_text_helpers(hour_height):
     H30 = hour_height / 2.0
     H15 = H30 / 2.0
 
-    # title sizes - increased for better visibility
-    title15 = 0.75 * H15  # Increased from 0.65
-    title30 = 0.55 * H30  # Increased from 0.45
+    # title sizes - reduced for smaller headings
+    title15 = 0.6 * H15  # Reduced from 0.75
+    title30 = 0.45 * H30  # Reduced from 0.55
 
     # time sizes - increased for better visibility
     time30       = 0.32 * H30  # Increased from 0.28
@@ -469,7 +469,7 @@ def render_time_grid(
     
     # Draw the grid heading
     if draw_text:
-        c.setFont("Montserrat-SemiBold", 4)
+        c.setFont("Montserrat-SemiBold", 10)
         c.drawString((layout["grid_left"] +0.25), (layout["grid_top"] + 0.25 + text_padding), "Schedule")
 
     # Draw the horizontal hour lines and labels
