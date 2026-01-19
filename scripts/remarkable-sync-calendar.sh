@@ -4,15 +4,17 @@
 # Only runs once per day to avoid multiple executions
 # Generates and uploads the next 7 days with annotation preservation
 
-# Logging function with timestamp
+# Logging function with timestamp (logs only)
 log_with_timestamp() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "/Users/felipepavanela/Documents/Dev/ephemeris-remarkable-calendar/logs/remarkable-sync.log"
 }
+
+# Create logs directory if it doesn't exist
+mkdir -p "/Users/felipepavanela/Documents/Dev/ephemeris-remarkable-calendar/logs"
 
 # Always show a notification to validate it's running
 TIMESTAMP=$(date '+%H:%M:%S')
 log_with_timestamp "🔍 Starting remarkable sync calendar check"
-osascript -e "display notification \"🔍 Checking at $TIMESTAMP\" with title \"Remarkable Sync Calendar\" subtitle \"Running validation check\""
 
 # Use absolute paths to avoid permission issues
 SCRIPT_DIR="/Users/felipepavanela/Documents/Dev/ephemeris-remarkable-calendar/scripts"
@@ -24,7 +26,6 @@ MARKER_FILE="/tmp/ephemeris_run_$TODAY"
 
 if [ -f "$MARKER_FILE" ]; then
     log_with_timestamp "📅 Ephemeris already run today, skipping..."
-    osascript -e 'display notification "📅 Already synced today" with title "Remarkable Sync Calendar" subtitle "Will run again tomorrow"'
     exit 0
 fi
 
