@@ -105,6 +105,13 @@ upload_to_remarkable() {
         if [[ "$response" =~ ^[Yy]$ ]]; then
             if setup_remarkable_credentials; then
                 echo -e "${GREEN}✅ Credentials configured! Retrying upload...${NC}"
+                # Retry credential check after setup
+                if check_remarkable_credentials; then
+                    echo -e "${GREEN}✅ Credentials verified! Proceeding with upload...${NC}"
+                else
+                    echo -e "${RED}❌ Credential verification failed after setup.${NC}"
+                    exit 1
+                fi
             else
                 echo -e "${RED}❌ Cannot upload without reMarkable credentials.${NC}"
                 exit 1
