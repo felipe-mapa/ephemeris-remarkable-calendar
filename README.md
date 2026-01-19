@@ -109,6 +109,38 @@ month_gap_h = 12
 month_gap_v = 12
 ```
 
+## Automation
+
+### Daily Sync on Unlock
+
+Set up automatic calendar sync when you unlock your MacBook:
+
+```bash
+# Install the unlock trigger
+cp scripts/com.ephemeris.remarkable-sync-calendar.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.ephemeris.remarkable-sync-calendar.plist
+```
+
+This will:
+- Run the first time you unlock your laptop each day
+- Generate and upload the next 7 days of calendar
+- Only run once per day (uses `/tmp/ephemeris_run_YYYY-MM-DD` marker)
+
+To uninstall:
+```bash
+launchctl unload ~/Library/LaunchAgents/com.ephemeris.remarkable-sync-calendar.plist
+rm ~/Library/LaunchAgents/com.ephemeris.remarkable-sync-calendar.plist
+```
+
+### Scheduled Daily Sync
+
+For time-based automation, use the existing scheduled agent:
+
+```bash
+cp scripts/com.ephemeris.daily.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.ephemeris.daily.plist
+```
+
 ## Troubleshooting
 
 -   **Fonts not loading**: Check `fonts/` directory
