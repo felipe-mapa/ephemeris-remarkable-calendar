@@ -39,17 +39,30 @@ def get_layout_config(width, height, start_hour=6, end_hour=17):
     grid_bottom = page_bottom + bottom_buffer
 
     # Compute horizontal extents for the grid
-    grid_left  = page_left + time_label_width
+    # Time labels will be on the right side now
+    grid_left  = page_left
     
-    # If sidebar is enabled, reduce grid_right to make room for Tasks/Todos + Notes
+    # If sidebar is enabled, place tasks/notes on the left (60%) and calendar on the right (40%)
     if settings.SIDEBAR_ENABLED:
-        sidebar_width = settings.SIDEBAR_WIDTH
+        # Calculate 60/40 split of available width
+        total_width = page_right - page_left
+        sidebar_width = total_width * 0.6  # 60% for tasks/notes (left sidebar)
+        calendar_width = total_width * 0.4  # 40% for calendar (right side)
         sidebar_gap = settings.SIDEBAR_GAP
-        grid_right = page_right - sidebar_width - sidebar_gap
-        sidebar_left = grid_right + sidebar_gap
-        sidebar_right = page_right
+        
+        # Sidebar (tasks/notes) on the left
+        sidebar_left = page_left
+        sidebar_right = sidebar_left + sidebar_width
+        
+        # Calendar on the right - extend to right edge, time labels will be at the very edge
+        grid_left = sidebar_right + sidebar_gap
+        grid_right = page_right  # No padding - extend to right edge
+        
+        # Adjust time label width for smaller calendar space
+        time_label_width = min(time_label_width, calendar_width * 0.12)  # Reduced to 12% of calendar width
+        # Time labels will be positioned at the very right edge
     else:
-        grid_right = page_right
+        grid_right = page_right  # No padding - extend to right edge
         sidebar_left = None
         sidebar_right = None
         sidebar_width = 0

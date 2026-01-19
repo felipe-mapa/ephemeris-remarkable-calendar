@@ -37,13 +37,13 @@ def init_text_helpers(hour_height):
     H30 = hour_height / 2.0
     H15 = H30 / 2.0
 
-    # title sizes
-    title15 = 0.75 * H15
-    title30 = 0.50 * H30
+    # title sizes - increased for better visibility
+    title15 = 0.75 * H15  # Increased from 0.65
+    title30 = 0.55 * H30  # Increased from 0.45
 
-    # time sizes (cap 15‑min at the 30‑min size)
-    time30       = 0.33 * H30
-    time15_uncap = 0.75 * H15
+    # time sizes - increased for better visibility
+    time30       = 0.32 * H30  # Increased from 0.28
+    time15_uncap = 0.75 * H15  # Increased from 0.65
     time15       = min(time15_uncap, time30)
 
     # grab font metrics
@@ -312,6 +312,8 @@ def draw_centered_multiline(
 def render_sidebar(
     c,
     layout,
+    page_top,
+    heading_ascent,
     *,
     draw_text=True,
     draw_shapes=True,
@@ -358,11 +360,11 @@ def render_sidebar(
     todo_height = (TODO_LINES * todo_line_height) + heading_height
     notes_height = (NOTES_LINES * notes_line_height) + heading_height
     
-    # Positions
-    todo_top = grid_top
+    # Positions - moved to top of page below header
+    todo_top = page_top - heading_ascent - 30  # Position below header
     todo_bottom = todo_top - todo_height
     notes_top = todo_bottom - separator_height
-    notes_bottom = grid_bottom
+    notes_bottom = notes_top - notes_height
     
     # Line spacing within sections - use calculated values
     # todo_line_height already calculated above
@@ -375,7 +377,7 @@ def render_sidebar(
     logger.log("VISUAL", "    Sidebar left: {l:.2f}, right: {r:.2f}", l=sidebar_left, r=sidebar_right)
     
     # ─── TASKS/TODOS SECTION ───────────────────────────
-    sidebar_text_padding = 10  # Extra left padding for sidebar content
+    sidebar_text_padding = 0
     if draw_text:
         c.setFont("Montserrat-SemiBold", 10)
         c.setFillGray(0)
@@ -389,21 +391,18 @@ def render_sidebar(
         line_center_y = todo_top - 0.5
         c.line(sidebar_left + sidebar_text_padding, line_center_y, sidebar_right, line_center_y)
     
-    # Draw vertical line on left edge of sidebar
-    if draw_shapes:
-        c.setStrokeColor(css_color_to_hex(GRIDLINE_COLOR))
-        c.setLineWidth(0.5)
-        c.line(sidebar_left, grid_top + 15, sidebar_left, grid_bottom)
+    # Draw vertical line on left edge of sidebar - REMOVED
+    # No longer drawing vertical line to extend to left edge
     
     # Draw todo lines with checkboxes
     for i in range(TODO_LINES):
         y = todo_top - heading_height + 5 - (i * todo_line_height)
         
-        # Draw checkbox (circle)
+        # Draw checkbox (circle) - positioned at left edge with no padding
         if draw_shapes:
             c.setStrokeGray(0)
             c.setLineWidth(0.5)
-            checkbox_x = sidebar_left + sidebar_text_padding
+            checkbox_x = sidebar_left + 2  # Minimal padding from left edge
             checkbox_y = y - checkbox_size / 2
             c.circle(checkbox_x + checkbox_size / 2, checkbox_y + checkbox_size / 2, checkbox_size / 2, stroke=1, fill=0)
         
@@ -456,8 +455,8 @@ def render_time_grid(
 
     # Vertical line
     if draw_shapes:
-        c.setStrokeColor(css_color_to_hex(GRIDLINE_COLOR))
-        c.setLineWidth(0.5)
+        c.setStrokeGray(0.3)  # Dark grey instead of black
+        c.setLineWidth(0.4)
         c.line(
             layout["grid_left"] +0.25,
             layout["grid_bottom"] + 1,
@@ -470,8 +469,7 @@ def render_time_grid(
     
     # Draw the grid heading
     if draw_text:
-        c.setStrokeColor(css_color_to_hex(GRIDLINE_COLOR))
-        c.setFont("Montserrat-SemiBold", 10)
+        c.setFont("Montserrat-SemiBold", 4)
         c.drawString((layout["grid_left"] +0.25), (layout["grid_top"] + 0.25 + text_padding), "Schedule")
 
     # Draw the horizontal hour lines and labels
@@ -480,12 +478,15 @@ def render_time_grid(
         # Emphasize the start hour
         if draw_shapes:
             if hour == layout["start_hour"]:
-                c.setStrokeGray(0)
+                c.setStrokeGray(0.5)  # Grey 0.5 instead of black for consistency
                 c.setLineWidth(0.5)
             else:
-                c.setStrokeColor(css_color_to_hex(GRIDLINE_COLOR))
+                c.setStrokeGray(0.5)  # Dark grey instead of black
                 c.setLineWidth(0.5)
-            c.line(layout["grid_left"], y, layout["grid_right"], y)
+            # Draw horizontal lines - make them shorter to avoid going over time labels
+            line_end = layout["grid_right"] - 25  # Leave space for time labels
+            c.line(layout["grid_left"], y, line_end, y)
+            
         # Draw either the override text or the normal time
         if override_label_hour is not None \
            and override_label_text is not None \
@@ -497,13 +498,14 @@ def render_time_grid(
                 else:
                     c.setFillGray(0.2)
                 c.setFont("Montserrat-SemiBold", 7)
+                # Draw at the very right edge
                 c.drawRightString(
-                    layout["grid_left"] - 7,
+                    layout["grid_right"],
                     y + 2,
                     "All",
                 )
                 c.drawRightString(
-                    layout["grid_left"] - 5,
+                    layout["grid_right"],
                     y - 6,
                     "Day",
                 )
@@ -520,8 +522,9 @@ def render_time_grid(
                     if settings.USE_24H
                     else datetime.combine(date_label, time(hour=hour)).strftime("%-I %p")
                 )
+                # Draw time label at the very right edge
                 c.drawRightString(
-                    layout["grid_left"] - 5,
+                    layout["grid_right"] - 2,
                     y - 2,
                     label,
                 )
@@ -572,6 +575,7 @@ def render_schedule_pdf(
     page_top = layout["page_top"]
     page_left = layout["page_left"]
     page_right = layout["page_right"]
+    page_bottom = layout["page_bottom"]
     heading_ascent = layout["heading_ascent"]
     heading_size = layout["heading_size"]
     element_pad = layout["element_pad"]
@@ -650,14 +654,14 @@ def render_schedule_pdf(
     sep_y = title_y - element_pad
     if draw_shapes:
         if settings.MONOCHROME:
-            c.setStrokeGray(0)
+            c.setStrokeGray(0.3)  # Dark grey instead of black
         else:
-            c.setStrokeGray(0.2)  # Lighter color to match other headings
+            c.setStrokeGray(0.3)  # Dark grey instead of lighter color
         c.setLineWidth(0.5)  # Less bold to match other headings
         c.line(page_left, sep_y, page_right, sep_y)
 
     # Mini Calendar Definitions
-    mini_w       = 120  # Make wider to accommodate extended view
+    mini_w       = (page_right - page_left) * 0.39  # 40% of screen width with padding
     mini_h       = MINICAL_HEIGHT
     gap          = mini_block_gap
     total_w = mini_w  # Only one calendar now
@@ -680,13 +684,13 @@ def render_schedule_pdf(
         x_start = page_right - mini_w + 5  # Position calendar so its right edge aligns with page_right
     
 
-    # All Day Events
+    # All Day Events - moved to bottom of page
     band_left = page_left  # Always align with left margin
     
     if DRAW_MINICALS:
-        band_right  = (page_left + page_right) / 1.6  # Extend to center of screen
+        band_right  = (page_left + page_right) / 1.7  # Extend to center of screen
     else:
-        band_right = (page_left + page_right) / 1.6  # Always extend to center
+        band_right = (page_left + page_right) / 1.7  # Always extend to center
     
     band_width  = band_right - band_left
     
@@ -697,8 +701,9 @@ def render_schedule_pdf(
     elif band_width < 50:
         logger.warning("WARNING: All-day band width is very narrow: {} points", band_width)
     
-    band_bottom = y_cal + element_pad
-    band_top    = y_cal + mini_h + 2*mini_text_pad
+    # Position all-day events at the bottom of the page, above the footer
+    band_bottom = page_bottom + element_pad  # Add some padding from bottom
+    band_top    = band_bottom + 55  # Fixed height for all-day events band
     band_height = band_top - band_bottom
     
 
@@ -770,30 +775,13 @@ def render_schedule_pdf(
             draw_shapes=draw_shapes,
         )
 
-    # Main Grid
-    if all_day_in_grid:
-        render_time_grid(
-            c,
-            date_label,
-            layout,
-            override_label_hour=eff_start,
-            override_label_text=["All Day", "Events"],
-            draw_text=draw_text,
-            draw_shapes=draw_shapes,
-        )
-    else:
-        render_time_grid(
-            c,
-            date_label,
-            layout,
-            draw_text=draw_text,
-            draw_shapes=draw_shapes,
-        )
 
     # Sidebar (Tasks/Todos + Notes)
     render_sidebar(
         c,
         layout,
+        page_top,
+        heading_ascent,
         draw_text=draw_text,
         draw_shapes=draw_shapes,
     )
@@ -837,10 +825,6 @@ def render_schedule_pdf(
 
         box_width = total_width * width_frac
         
-        # Limit box width to center of screen
-        max_width = ((layout["page_left"] + layout["page_right"]) / 2) - layout["grid_left"]
-        if box_width > max_width:
-            box_width = max_width
         
         box_x = layout["grid_right"] - box_width  # right-align
 
@@ -1121,6 +1105,26 @@ def render_schedule_pdf(
                     else:
                         c.drawRightString(box_x + box_width - text_padding, y_line1, time_label)
 
+    # Time Grid - render after events so schedule lines appear on top
+    if all_day_in_grid:
+        render_time_grid(
+            c,
+            date_label,
+            layout,
+            override_label_hour=eff_start,
+            override_label_text=["All Day", "Events"],
+            draw_text=draw_text,
+            draw_shapes=draw_shapes,
+        )
+    else:
+        render_time_grid(
+            c,
+            date_label,
+            layout,
+            draw_text=draw_text,
+            draw_shapes=draw_shapes,
+        )
+
     bar_w          = 2
     
     if DRAW_ALL_DAY_BAND:
@@ -1174,7 +1178,7 @@ def render_schedule_pdf(
             # Draw box
             c.setStrokeColor(black)
             c.setLineWidth(0.5)
-            c.roundRect(band_left, band_bottom, band_width, band_height, 4, stroke=1, fill=0)
+            c.roundRect(band_left, band_bottom, band_width, band_height, 2, stroke=1, fill=0)
 
         # Draw the actual all day events, if they exist
         if all_day_events:
