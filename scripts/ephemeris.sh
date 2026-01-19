@@ -66,7 +66,16 @@ clear_events() {
     "$VENV_PYTHON" "$SCRIPT_DIR/../ephemeris/calendar_db_sqlite.py" clear_range "$start_date" "$end_date"
 }
 
-# Merge annotations from existing PDF and upload
+# Check if reMarkable credentials are configured
+check_remarkable_credentials() {
+    "$VENV_PYTHON" "$SCRIPT_DIR/../ephemeris/remarkable_credentials.py" check
+}
+
+# Interactive setup for reMarkable credentials
+setup_remarkable_credentials() {
+    "$VENV_PYTHON" "$SCRIPT_DIR/../ephemeris/remarkable_credentials.py" setup
+}
+
 merge_annotations() {
     local year=$1
     local pdf_file=$2
@@ -88,6 +97,23 @@ upload_to_remarkable() {
     local file_path=$1
     local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     local year=$(basename "$file_path" | grep -o '[0-9]\{4\}')
+    
+    # Check if reMarkable credentials are configured
+    if ! check_remarkable_credentials; then
+        echo -e "${YELLOW}💡 Would you like to set up reMarkable credentials now? (y/N)${NC}"
+        read -r response
+        if [[ "$response" =~ ^[Yy]$ ]]; then
+            if setup_remarkable_credentials; then
+                echo -e "${GREEN}✅ Credentials configured! Retrying upload...${NC}"
+            else
+                echo -e "${RED}❌ Cannot upload without reMarkable credentials.${NC}"
+                exit 1
+            fi
+        else
+            echo -e "${RED}❌ Cannot upload without reMarkable credentials.${NC}"
+            exit 1
+        fi
+    fi
     
     # Only upload with annotations preserved
     if merge_annotations "$year" "$file_path"; then

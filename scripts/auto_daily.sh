@@ -4,5 +4,7 @@
 # Generates and uploads the next 30 days with annotation preservation
 
 cd "$(dirname "$0")"
-./ephemeris.sh generate 30
+
+echo "📅 Generating calendar for next 7 days..."
+./ephemeris.sh generate 7
 ./ephemeris.sh upload

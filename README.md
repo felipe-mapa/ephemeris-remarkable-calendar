@@ -26,14 +26,25 @@ cd ephemeris-remarkable-calendar/scripts
     cd ephemeris-remarkable-calendar
     ```
 
-2. **Generate calendar**
+2. **Install dependencies**
+
+    ```bash
+    # Create and activate virtual environment
+    python3 -m venv venv
+    source venv/bin/activate
+    
+    # Install requirements
+    pip install -r requirements.txt
+    ```
+
+3. **Generate calendar**
 
     ```bash
     cd scripts
-    ./ephemeris.sh generate
+    ./ephemeris.sh generate-full
     ```
 
-3. **Configure calendars** (optional)
+4. **Configure calendars** (optional)
     - Edit `config/config.yaml` to add your calendar sources
 
 ## Commands
@@ -101,7 +112,10 @@ month_gap_v = 12
 ## Troubleshooting
 
 -   **Fonts not loading**: Check `fonts/` directory
--   **Upload fails**: Install and configure `rmapi`
+-   **Upload fails**: 
+    - Install and configure `rmapi` in `config/.rmapi`
+    - Ensure Docker is installed and running
+    - Check internet connection
 -   **No events**: Verify calendar URLs in config
 
 ## License
