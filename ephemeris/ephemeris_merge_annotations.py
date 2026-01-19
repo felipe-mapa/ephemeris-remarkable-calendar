@@ -33,7 +33,7 @@ def get_config_path():
 
 
 def run_rmapi_command(output_dir, *args):
-    """Run an rmapi command via Docker"""
+    """Run an rmapi command via Docker with timeout"""
     config_path = get_config_path()
     cmd = [
         'docker', 'run', '--rm',
@@ -45,12 +45,23 @@ def run_rmapi_command(output_dir, *args):
     ] + list(args)
     
     print(f"Running: rmapi {' '.join(args)}")
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.stdout:
-        print(f"stdout: {result.stdout[:500]}")
-    if result.stderr:
-        print(f"stderr: {result.stderr[:500]}")
-    return result
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        if result.stdout:
+            print(f"stdout: {result.stdout[:500]}")
+        if result.stderr:
+            print(f"stderr: {result.stderr[:500]}")
+        return result
+    except subprocess.TimeoutExpired:
+        print(f"Command timed out after 60 seconds: rmapi {' '.join(args)}")
+        print("💡 This may be due to network issues or reMarkable cloud service problems")
+        # Return a fake result with timeout error
+        class TimeoutResult:
+            def __init__(self):
+                self.returncode = 124
+                self.stdout = ""
+                self.stderr = "Command timed out after 60 seconds"
+        return TimeoutResult()
 
 
 def find_calendar_document(year, output_dir):
@@ -58,6 +69,12 @@ def find_calendar_document(year, output_dir):
     print(f"Looking for Calendar {year} on reMarkable...")
     
     result = run_rmapi_command(output_dir, 'ls')
+    
+    # Check for timeout or error
+    if result.returncode != 0:
+        print(f"Failed to list documents: {result.stderr}")
+        print("💡 Unable to connect to reMarkable cloud service")
+        return None
     
     # Parse output to find the calendar
     # Format: [d] or [f] followed by document name
@@ -98,6 +115,12 @@ def download_raw_document_with_annotations(doc_name, output_dir):
     # First, use 'find' to get all matching documents
     find_result = run_rmapi_command(output_dir, 'find', '.', doc_name)
     
+    # Check for timeout or error
+    if find_result.returncode != 0:
+        print(f"Failed to find document: {find_result.stderr}")
+        print("💡 Unable to search for documents on reMarkable")
+        return None
+    
     # Parse find results to get all matching paths (excluding trash)
     matching_paths = []
     for line in find_result.stdout.split('\n'):
@@ -128,6 +151,8 @@ def download_raw_document_with_annotations(doc_name, output_dir):
         
         if result.returncode != 0:
             print(f"  Failed to download: {result.stderr}")
+            if "timed out" in result.stderr.lower():
+                print("  ⚠️  Download timed out - skipping this document")
             continue
         
         # Find the downloaded file
