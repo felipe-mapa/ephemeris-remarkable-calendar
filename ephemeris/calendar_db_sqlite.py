@@ -51,36 +51,56 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_dtstart ON events(dtstart)
     ''')
     
+    # Remove duplicates before creating unique index
+    cursor.execute('''
+        DELETE FROM events WHERE id NOT IN (
+            SELECT MIN(id) FROM events 
+            GROUP BY date, summary, dtstart
+        )
+    ''')
+    
+    cursor.execute('''
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_event_unique ON events(date, summary, dtstart)
+    ''')
+    
     conn.commit()
     conn.close()
 
 def add_events(events: Dict[str, List[Dict]]):
-    """Add or update events for specific dates"""
+    """Add events for specific dates, ignoring duplicates"""
     init_db()
     db_path = get_db_path()
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
     for date_str, date_events in events.items():
-        # Delete existing events for this date
-        cursor.execute('DELETE FROM events WHERE date = ?', (date_str,))
-        
-        # Insert new events
         for event in date_events:
+            # Check if event already exists (based on title, date and time)
             cursor.execute('''
-                INSERT INTO events (date, summary, description, location, dtstart, dtend, color, calendar, all_day)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                SELECT id FROM events 
+                WHERE date = ? AND summary = ? AND dtstart = ?
             ''', (
                 date_str,
                 event.get('summary', ''),
-                event.get('description', ''),
-                event.get('location', ''),
-                event.get('dtstart', ''),
-                event.get('dtend', ''),
-                event.get('color', 'black'),
-                event.get('calendar', 'Unknown'),
-                1 if event.get('all_day', False) else 0
+                event.get('dtstart', '')
             ))
+            
+            if cursor.fetchone() is None:
+                # Event doesn't exist, insert it
+                cursor.execute('''
+                    INSERT INTO events (date, summary, description, location, dtstart, dtend, color, calendar, all_day)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    date_str,
+                    event.get('summary', ''),
+                    event.get('description', ''),
+                    event.get('location', ''),
+                    event.get('dtstart', ''),
+                    event.get('dtend', ''),
+                    event.get('color', 'black'),
+                    event.get('calendar', 'Unknown'),
+                    1 if event.get('all_day', False) else 0
+                ))
     
     conn.commit()
     conn.close()
