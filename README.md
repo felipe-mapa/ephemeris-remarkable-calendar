@@ -2,21 +2,6 @@
 
 A clean, minimalist calendar generator for the reMarkable tablet with interactive year view and daily pages.
 
-## Quick Start
-
-```bash
-# Clone and setup
-git clone https://github.com/felipe-mapa/ephemeris-remarkable-calendar.git
-cd ephemeris-remarkable-calendar/scripts
-./ephemeris.sh init
-
-# Generate calendar locally
-./ephemeris.sh refresh
-
-# Upload to reMarkable
-./ephemeris.sh upload
-```
-
 ## Installation
 
 1. **Clone the repository**
@@ -32,7 +17,7 @@ cd ephemeris-remarkable-calendar/scripts
     # Create and activate virtual environment
     python3 -m venv venv
     source venv/bin/activate
-    
+
     # Install requirements
     pip install -r requirements.txt
     ```
@@ -94,9 +79,9 @@ layout:
 
 ## Customization
 
--   **Year calendar**: Edit `ephemeris/year_calendar.py`
--   **Daily pages**: Edit `ephemeris/renderers.py`
--   **Settings**: Edit `ephemeris/settings.py`
+- **Year calendar**: Edit `ephemeris/year_calendar.py`
+- **Daily pages**: Edit `ephemeris/renderers.py`
+- **Settings**: Edit `ephemeris/settings.py`
 
 Common changes:
 
@@ -122,6 +107,7 @@ launchctl load ~/Library/LaunchAgents/com.ephemeris.remarkable-sync-calendar.pli
 ```
 
 This will:
+
 - Run every 5 minutes but only execute once per day
 - Generate and upload the next 7 days of calendar with annotation preservation
 - Only run once per day (uses `logs/ephemeris_run_YYYY-MM-DD` marker)
@@ -129,6 +115,7 @@ This will:
 - Log all activity to `logs/remarkable-sync.log`
 
 To uninstall:
+
 ```bash
 launchctl unload ~/Library/LaunchAgents/com.ephemeris.remarkable-sync-calendar.plist
 launchctl remove com.ephemeris.remarkable-sync-calendar
@@ -155,17 +142,17 @@ The automation uses these scripts which can also be run manually:
 
 ## Troubleshooting
 
--   **Fonts not loading**: Check `fonts/` directory
--   **Upload fails**: 
+- **Fonts not loading**: Check `fonts/` directory
+- **Upload fails**:
     - Install and configure `rmapi` in `config/.rmapi`
     - Ensure Docker is installed and running
     - Check internet connection
--   **No events**: Verify calendar URLs in config
--   **Automation not running**:
+- **No events**: Verify calendar URLs in config
+- **Automation not running**:
     - Check if launch agent is loaded: `launchctl list | grep ephemeris`
     - Check logs: `tail -f logs/remarkable-sync.log`
     - Verify unlock trigger is enabled in System Settings → General → Login Items
--   **Multiple daily runs**:
+- **Multiple daily runs**:
     - Check marker file: `ls -la logs/ephemeris_run_$(date +%Y-%m-%d)`
     - Manually delete marker file to force run: `rm logs/ephemeris_run_$(date +%Y-%m-%d)`
 

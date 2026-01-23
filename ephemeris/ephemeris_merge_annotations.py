@@ -104,6 +104,28 @@ def find_calendar_document(year, output_dir):
         return None
 
 
+def backup_rmdoc(rmdoc_path, doc_name):
+    """Create a backup of the original .rmdoc file with timestamp"""
+    import time
+    
+    # Create backups directory if it doesn't exist
+    script_dir = get_script_dir()
+    backup_dir = os.path.join(script_dir, "..", "backups")
+    os.makedirs(backup_dir, exist_ok=True)
+    
+    # Create timestamp
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    backup_filename = f"{doc_name}_{timestamp}.rmdoc"
+    backup_path = os.path.join(backup_dir, backup_filename)
+    
+    # Copy the file to backup location
+    try:
+        shutil.copy2(rmdoc_path, backup_path)
+        print(f"  📋 Created backup: {backup_filename}")
+    except Exception as e:
+        print(f"  ⚠️ Could not create backup: {e}")
+
+
 def download_raw_document_with_annotations(doc_name, output_dir):
     """
     Download the raw document using 'get' command.
@@ -165,6 +187,9 @@ def download_raw_document_with_annotations(doc_name, output_dir):
         if not rmdoc_path:
             print(f"  No .rmdoc file found")
             continue
+        
+        # Create backup of the original .rmdoc file
+        backup_rmdoc(rmdoc_path, doc_name)
         
         # Check if this document has annotations
         has_annotations = False

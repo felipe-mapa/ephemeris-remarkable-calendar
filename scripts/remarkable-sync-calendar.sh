@@ -35,8 +35,8 @@ if [ -f "$MARKER_FILE" ]; then
 fi
 
 log_with_timestamp "📅 Generating calendar for next 7 days (unlock trigger)..."
-cd "$SCRIPT_DIR" || exit 1
 log_with_timestamp "📅 Running: ./ephemeris.sh generate 7"
+cd "$SCRIPT_DIR" || exit 1
 if ! ./ephemeris.sh generate 7; then
     log_with_timestamp "❌ ERROR: Failed to generate calendar"
     osascript -e 'display notification "❌ Failed to generate calendar" with title "Remarkable Sync Calendar Error" subtitle "Generate command failed"'
