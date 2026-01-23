@@ -6,23 +6,28 @@
 
 # Logging function with timestamp (logs only)
 log_with_timestamp() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "/Users/felipepavanela/Documents/Dev/ephemeris-remarkable-calendar/logs/remarkable-sync.log"
+    local SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+    local LOG_FILE="$PROJECT_ROOT/logs/remarkable-sync.log"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
 }
 
 # Create logs directory if it doesn't exist
-mkdir -p "/Users/felipepavanela/Documents/Dev/ephemeris-remarkable-calendar/logs"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+LOGS_DIR="$PROJECT_ROOT/logs"
+mkdir -p "$LOGS_DIR"
 
 # Always show a notification to validate it's running
 TIMESTAMP=$(date '+%H:%M:%S')
 log_with_timestamp "🔍 Starting remarkable sync calendar check"
 
-# Use absolute paths to avoid permission issues
-SCRIPT_DIR="/Users/felipepavanela/Documents/Dev/ephemeris-remarkable-calendar/scripts"
+# Use relative paths based on script location
 EPHEMERIS_SCRIPT="$SCRIPT_DIR/ephemeris.sh"
 
 # Check if already run today
 TODAY=$(date +%Y-%m-%d)
-MARKER_FILE="/tmp/ephemeris_run_$TODAY"
+MARKER_FILE="$LOGS_DIR/ephemeris_run_$TODAY"
 
 if [ -f "$MARKER_FILE" ]; then
     log_with_timestamp "📅 Ephemeris already run today, skipping..."

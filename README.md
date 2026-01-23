@@ -122,23 +122,35 @@ launchctl load ~/Library/LaunchAgents/com.ephemeris.remarkable-sync-calendar.pli
 ```
 
 This will:
-- Run the first time you unlock your laptop each day
-- Generate and upload the next 7 days of calendar
-- Only run once per day (uses `/tmp/ephemeris_run_YYYY-MM-DD` marker)
+- Run every 5 minutes but only execute once per day
+- Generate and upload the next 7 days of calendar with annotation preservation
+- Only run once per day (uses `logs/ephemeris_run_YYYY-MM-DD` marker)
+- Show notifications for success/failure
+- Log all activity to `logs/remarkable-sync.log`
 
 To uninstall:
 ```bash
 launchctl unload ~/Library/LaunchAgents/com.ephemeris.remarkable-sync-calendar.plist
+launchctl remove com.ephemeris.remarkable-sync-calendar
 rm ~/Library/LaunchAgents/com.ephemeris.remarkable-sync-calendar.plist
 ```
 
-### Scheduled Daily Sync
+### Manual Scripts
 
-For time-based automation, use the existing scheduled agent:
+The automation uses these scripts which can also be run manually:
+
+#### Main automation script
 
 ```bash
-cp scripts/com.ephemeris.daily.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.ephemeris.daily.plist
+./scripts/remarkable-sync-calendar.sh
+```
+
+#### Core ephemeris commands
+
+```bash
+./scripts/ephemeris.sh generate 7     # Generate next 7 days
+./scripts/ephemeris.sh upload         # Upload to reMarkable
+./scripts/ephemeris.sh generate-full  # Generate full year
 ```
 
 ## Troubleshooting
@@ -149,6 +161,13 @@ launchctl load ~/Library/LaunchAgents/com.ephemeris.daily.plist
     - Ensure Docker is installed and running
     - Check internet connection
 -   **No events**: Verify calendar URLs in config
+-   **Automation not running**:
+    - Check if launch agent is loaded: `launchctl list | grep ephemeris`
+    - Check logs: `tail -f logs/remarkable-sync.log`
+    - Verify unlock trigger is enabled in System Settings → General → Login Items
+-   **Multiple daily runs**:
+    - Check marker file: `ls -la logs/ephemeris_run_$(date +%Y-%m-%d)`
+    - Manually delete marker file to force run: `rm logs/ephemeris_run_$(date +%Y-%m-%d)`
 
 ## License
 

@@ -3,16 +3,20 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>Remarkable Sync Calendar</string>
+    <string>com.ephemeris.remarkable-sync-calendar</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/felipepavanela/Library/Application Support/ephemeris/remarkable-sync-calendar.sh</string>
+        <string>/bin/bash</string>
+        <string>-c</string>
+        <string>find "$HOME" -name "launch-agent-wrapper.sh" -path "*/scripts/*" -exec {} \;</string>
     </array>
     <key>StartInterval</key>
-    <integer>3600</integer>
+    <integer>300</integer>
+    <key>RunAtLoad</key>
+    <true/>
     <key>StandardOutPath</key>
-    <string>/Users/felipepavanela/Documents/Dev/ephemeris-remarkable-calendar/logs/ephemeris.log</string>
+    <string>$HOME/ephemeris-remarkable-calendar/logs/ephemeris.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/felipepavanela/Documents/Dev/ephemeris-remarkable-calendar/logs/ephemeris.err</string>
+    <string>$HOME/ephemeris-remarkable-calendar/logs/ephemeris.err</string>
 </dict>
 </plist>
