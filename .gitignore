@@ -99,4 +99,4 @@ output/
 # Private keys and config
 config/*
 !config/*.sample.*
-logs/*
+backups/*
