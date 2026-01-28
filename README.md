@@ -96,35 +96,57 @@ month_gap_v = 12
 
 ## Automation
 
-### Daily Sync on Unlock
+### Daily Sync with macOS Shortcuts (Recommended)
 
-Set up automatic calendar sync when you unlock your MacBook:
+Set up automatic daily calendar sync using macOS Shortcuts:
 
-```bash
-# Install the unlock trigger
-cp scripts/com.ephemeris.remarkable-sync-calendar.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.ephemeris.remarkable-sync-calendar.plist
-```
+1. **Open Shortcuts app** (macOS Monterey or later)
+
+2. **Create new shortcut** named "Ephemeris Daily Sync"
+   - Add action: **Run Shell Script**
+   - Paste this script:
+     ```bash
+     {root_path_to_project}/ephemeris-remarkable-calendar/scripts/remarkable-sync-calendar.sh
+     ```
+   - Add action: **Show Notification** (optional)
+     - Title: `Ephemeris Sync Complete`
+     - Body: `Calendar synced to reMarkable`
+
+3. **Create automation**
+   - Go to **Automation** tab in Shortcuts
+   - Click **+** → **Personal Automation**
+   - Select **Time of Day** → Choose your preferred time (e.g., 9:00 AM)
+   - Set to repeat: **Daily**
+   - Add action: **Run Shortcut** → Select "Ephemeris Daily Sync"
+   - **Disable** "Ask Before Running"
 
 This will:
-
-- Run every 5 minutes but only execute once per day
+- Run once daily at your chosen time
 - Generate and upload the next 7 days of calendar with annotation preservation
-- Only run once per day (uses `logs/ephemeris_run_YYYY-MM-DD` marker)
-- Show notifications for success/failure
+- Show notification when complete
 - Log all activity to `logs/remarkable-sync.log`
 
-To uninstall:
+### Alternative: Calendar Alarm
 
-```bash
-launchctl unload ~/Library/LaunchAgents/com.ephemeris.remarkable-sync-calendar.plist
-launchctl remove com.ephemeris.remarkable-sync-calendar
-rm ~/Library/LaunchAgents/com.ephemeris.remarkable-sync-calendar.plist
-```
+If you prefer using Calendar app:
+
+1. **Create Automator Application**
+   - Open **Automator** → New **Application**
+   - Add action: **Run Shell Script**
+     ```bash
+     /Users/felipepavanela/Documents/Dev/ephemeris-remarkable-calendar/scripts/remarkable-sync-calendar.sh
+     ```
+   - Save as `EphemerisSync.app` in `~/Applications/`
+
+2. **Set up Calendar alarm**
+   - Open **Calendar** app
+   - Create new event: "Ephemeris Sync"
+   - Set to repeat: **Daily** at your preferred time
+   - Add alert: **Custom** → **Open file** → Select `EphemerisSync.app`
 
 ### Manual Scripts
 
-The automation uses these scripts which can also be run manually:
+You can also run these scripts manually:
 
 #### Main automation script
 
@@ -149,12 +171,15 @@ The automation uses these scripts which can also be run manually:
     - Check internet connection
 - **No events**: Verify calendar URLs in config
 - **Automation not running**:
-    - Check if launch agent is loaded: `launchctl list | grep ephemeris`
+    - **Shortcuts**: Check Automation tab → Verify automation is enabled and "Ask Before Running" is disabled
+    - **Calendar Alarm**: Ensure Calendar has permission to run applications in System Settings → Privacy & Security → Automation
     - Check logs: `tail -f logs/remarkable-sync.log`
-    - Verify unlock trigger is enabled in System Settings → General → Login Items
 - **Multiple daily runs**:
     - Check marker file: `ls -la logs/ephemeris_run_$(date +%Y-%m-%d)`
     - Manually delete marker file to force run: `rm logs/ephemeris_run_$(date +%Y-%m-%d)`
+- **Script fails when run manually**:
+    - Ensure you're in the project directory or use absolute paths
+    - Check script permissions: `chmod +x scripts/*.sh`
 
 ## License
 

@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# Auto daily script for screen unlock trigger
-# Only runs once per day to avoid multiple executions
+# Daily calendar sync script
 # Generates and uploads the next 7 days with annotation preservation
 
 # Logging function with timestamp (logs only)
@@ -18,23 +17,36 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 LOGS_DIR="$PROJECT_ROOT/logs"
 mkdir -p "$LOGS_DIR"
 
-# Always show a notification to validate it's running
-TIMESTAMP=$(date '+%H:%M:%S')
-log_with_timestamp "🔍 Starting remarkable sync calendar check"
+# Lock file to prevent concurrent executions
+LOCK_FILE="$LOGS_DIR/ephemeris_sync.lock"
+
+# Check if script is already running
+if [ -f "$LOCK_FILE" ]; then
+    # Check if the process is actually running
+    LOCK_PID=$(cat "$LOCK_FILE" 2>/dev/null)
+    if [ -n "$LOCK_PID" ] && kill -0 "$LOCK_PID" 2>/dev/null; then
+        echo "Script already running (PID: $LOCK_PID), skipping..."
+        log_with_timestamp "⚠️  Script already running (PID: $LOCK_PID), skipping..."
+        exit 0
+    else
+        # Stale lock file, remove it
+        log_with_timestamp "🧹 Removing stale lock file"
+        rm -f "$LOCK_FILE"
+    fi
+fi
+
+# Create lock file with current PID
+echo $$ > "$LOCK_FILE"
+
+# Ensure lock file is removed on exit
+trap "rm -f '$LOCK_FILE'" EXIT INT TERM
+
+log_with_timestamp "🔍 Starting remarkable sync calendar"
 
 # Use relative paths based on script location
 EPHEMERIS_SCRIPT="$SCRIPT_DIR/ephemeris.sh"
 
-# Check if already run today
-TODAY=$(date +%Y-%m-%d)
-MARKER_FILE="$LOGS_DIR/ephemeris_run_$TODAY"
-
-if [ -f "$MARKER_FILE" ]; then
-    log_with_timestamp "📅 Ephemeris already run today, skipping..."
-    exit 0
-fi
-
-log_with_timestamp "📅 Generating calendar for next 7 days (unlock trigger)..."
+log_with_timestamp "📅 Generating calendar for next 7 days..."
 log_with_timestamp "📅 Running: ./ephemeris.sh generate 7"
 cd "$SCRIPT_DIR" || exit 1
 if ! ./ephemeris.sh generate 7; then
@@ -55,7 +67,3 @@ log_with_timestamp "✅ Calendar generation and upload completed"
 log_with_timestamp "✅ Sending success notification"
 osascript -e 'display notification "✅ Calendar synced to reMarkable" with title "Remarkable Sync Calendar" subtitle "Next 7 days generated and uploaded"'
 log_with_timestamp "🎉 Script completed successfully"
-
-# Create marker file only if success
-touch "$MARKER_FILE"
-log_with_timestamp "📅 Created daily marker file: $MARKER_FILE"
