@@ -65,6 +65,37 @@ def init_db():
     
     conn.commit()
     conn.close()
+    
+    # Create backup of the database
+    backup_db(db_path)
+
+def backup_db(db_path=None):
+    """Create a timestamped backup of the calendar database"""
+    import shutil
+    from datetime import datetime
+    
+    if db_path is None:
+        db_path = get_db_path()
+    
+    if not os.path.exists(db_path):
+        return
+    
+    # Create backups directory
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    backup_dir = os.path.join(script_dir, "..", "backups", "db")
+    os.makedirs(backup_dir, exist_ok=True)
+    
+    # Create timestamped backup filename
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_filename = f"calendar_{timestamp}.db"
+    backup_path = os.path.join(backup_dir, backup_filename)
+    
+    # Copy database to backup location
+    try:
+        shutil.copy2(db_path, backup_path)
+        print(f"  📋 Created database backup: {backup_filename}")
+    except Exception as e:
+        print(f"  ⚠️ Could not create database backup: {e}")
 
 def add_events(events: Dict[str, List[Dict]]):
     """Add events for specific dates, ignoring duplicates"""

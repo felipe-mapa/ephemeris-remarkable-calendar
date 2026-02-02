@@ -168,14 +168,29 @@ You can also run these scripts manually:
 # Preserve annotations when updating calendar (downloads from reMarkable)
 ./ephemeris/ephemeris_merge_annotations.py
 
-# Use backup files instead of downloading (faster, offline)
+# Regenerate PDF from database and merge with backup annotations
 ./ephemeris/ephemeris_merge_from_backup.py
 
 # List available backup files
 ./ephemeris/ephemeris_merge_from_backup.py --list-backups
 
 # Use specific backup file
-./ephemeris/ephemeris_merge_from_backup.py --backup backups/Calendar\ 2026_20260202_093512.rmdoc
+./ephemeris/ephemeris_merge_from_backup.py --backup "backups/Calendar 2026_20260202_093512.rmdoc"
+
+# Skip upload (just create merged .rmdoc)
+./ephemeris/ephemeris_merge_from_backup.py --no-upload
+```
+
+#### Database management
+
+```bash
+# View database statistics
+python3 ephemeris/calendar_db_sqlite.py stats
+
+# Export all events from database
+python3 ephemeris/calendar_db_sqlite.py export
+
+# Database backups are automatically created in backups/db/
 ```
 
 ## Troubleshooting

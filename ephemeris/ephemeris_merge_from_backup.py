@@ -2,16 +2,17 @@
 """
 Preserve reMarkable annotations when updating calendar PDF using backup files
 
-This script is similar to ephemeris_merge_annotations.py but uses local backup
-.rmdoc files instead of downloading from reMarkable cloud.
+This script regenerates the calendar PDF from the database and merges it with
+annotations from a backup .rmdoc file.
 
 Strategy:
-1. Find the latest backup .rmdoc file (or use specified backup)
-2. Extract the .rmdoc contents
-3. Replace the PDF with the new calendar PDF
-4. Update the .content file to match new page count
-5. Rebuild the .rmdoc with new PDF + original .rm files
-6. Upload the rebuilt .rmdoc
+1. Regenerate calendar PDF from database
+2. Find the latest backup .rmdoc file (or use specified backup)
+3. Extract the .rmdoc contents
+4. Replace the PDF with the new calendar PDF
+5. Update the .content file to match new page count
+6. Rebuild the .rmdoc with new PDF + original .rm files
+7. Upload the rebuilt .rmdoc
 
 This preserves handwritten notes in their original .rm format.
 """
@@ -24,7 +25,7 @@ import shutil
 import zipfile
 import json
 import uuid as uuid_module
-from datetime import datetime
+from datetime import datetime, date, timedelta
 import glob
 
 
@@ -38,6 +39,69 @@ def get_config_path():
 
 def get_backup_dir():
     return os.path.abspath(os.path.join(get_script_dir(), "..", "backups"))
+
+
+def regenerate_pdf_from_db(year, output_path):
+    """Regenerate the full calendar PDF from the database using the main ephemeris code"""
+    print(f"Regenerating full calendar PDF from database for year {year}...")
+    
+    try:
+        # Check if we need to activate virtual environment
+        script_dir = get_script_dir()
+        venv_python = os.path.join(script_dir, "..", "venv", "bin", "python3")
+        
+        # If running outside venv and venv exists, use subprocess to run in venv
+        if os.path.exists(venv_python) and sys.executable != venv_python:
+            print(f"  Using virtual environment Python...")
+            
+            # Use the main ephemeris.py to generate the full calendar
+            ephemeris_script = os.path.join(script_dir, "..", "ephemeris.py")
+            
+            # Set environment variables for the generation
+            env = os.environ.copy()
+            env['TIME_DATE_RANGE'] = f"{year}-01-01:{year}-12-31"
+            env['APP_OUTPUT_PDF_PATH'] = output_path
+            env['APP_FORCE_REFRESH'] = 'true'
+            
+            # Run ephemeris.py with venv Python
+            result = subprocess.run(
+                [venv_python, ephemeris_script],
+                capture_output=True,
+                text=True,
+                env=env,
+                cwd=os.path.join(script_dir, "..")
+            )
+            
+            if result.returncode == 0:
+                print(f"  ✅ Generated full calendar PDF with {365 if year % 4 != 0 else 366} daily pages")
+                return True
+            else:
+                print(f"  ❌ Failed: {result.stderr}")
+                return False
+        
+        # Running in venv, use asyncio to run the main function
+        print(f"  Running calendar generation...")
+        import asyncio
+        
+        # Set environment variables
+        os.environ['TIME_DATE_RANGE'] = f"{year}-01-01:{year}-12-31"
+        os.environ['APP_OUTPUT_PDF_PATH'] = output_path
+        os.environ['APP_FORCE_REFRESH'] = 'true'
+        
+        # Import and run the main ephemeris function
+        sys.path.insert(0, os.path.join(script_dir, ".."))
+        from ephemeris import main as ephemeris_main
+        
+        asyncio.run(ephemeris_main())
+        
+        print(f"  ✅ Generated full calendar PDF: {os.path.basename(output_path)}")
+        return True
+        
+    except Exception as e:
+        print(f"  ❌ Failed to regenerate PDF: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 
 def find_latest_backup(doc_name=None, year=None):
@@ -251,38 +315,70 @@ def rebuild_rmdoc_with_new_pdf(extract_dir, doc_uuid, new_pdf_path, output_rmdoc
 
 
 def upload_rmdoc(rmdoc_path, doc_name):
-    """Upload the .rmdoc file to reMarkable, replacing the existing document."""
+    """Upload the .rmdoc file to reMarkable, fall back to PDF if .rmdoc fails."""
     print(f"Uploading .rmdoc to reMarkable...")
     
     config_path = get_config_path()
+    rmdoc_filename = os.path.basename(rmdoc_path)
     
-    # Create a temporary copy with the correct document name
-    temp_rmdoc_path = rmdoc_path.replace('_merged.rmdoc', '.rmdoc')
-    shutil.copy2(rmdoc_path, temp_rmdoc_path)
-    
-    rmdoc_filename = os.path.basename(temp_rmdoc_path)
-    
-    # Upload using --force to replace existing document
+    # Try to upload the .rmdoc file
     print(f"Uploading document as: {rmdoc_filename}")
     cmd_put = [
         'docker', 'run', '--rm',
         '-v', f"{config_path}:/root/.config/rmapi",
-        '-v', f"{temp_rmdoc_path}:/app/{rmdoc_filename}",
+        '-v', f"{rmdoc_path}:/app/{rmdoc_filename}",
         'ghcr.io/rmitchellscott/ephemeris:main-rmapi0.0.32',
         'rmapi', 'put', '--force', f'/app/{rmdoc_filename}'
     ]
     result = subprocess.run(cmd_put, capture_output=True, text=True)
     
-    # Clean up temporary file
-    os.remove(temp_rmdoc_path)
-    
     if result.returncode == 0:
         print("✅ Upload successful!")
         return True
     else:
-        print(f"❌ Upload failed: {result.stderr}")
-        print("💡 Please check your reMarkable connection and try again.")
-        return False
+        print(f"❌ .rmdoc upload failed: {result.stderr}")
+        print("🔄 Falling back to PDF upload (annotations will be preserved in next backup)")
+        
+        # Extract the PDF from the .rmdoc and upload it
+        try:
+            # Extract PDF from .rmdoc
+            with zipfile.ZipFile(rmdoc_path, 'r') as zf:
+                pdf_files = [f for f in zf.namelist() if f.endswith('.pdf')]
+                if pdf_files:
+                    # Extract the PDF to a temporary location
+                    pdf_data = zf.read(pdf_files[0])
+                    temp_pdf_path = rmdoc_path.replace('.rmdoc', '.pdf')
+                    with open(temp_pdf_path, 'wb') as f:
+                        f.write(pdf_data)
+                    
+                    # Upload the PDF
+                    pdf_filename = os.path.basename(temp_pdf_path)
+                    cmd_pdf = [
+                        'docker', 'run', '--rm',
+                        '-v', f"{config_path}:/root/.config/rmapi",
+                        '-v', f"{temp_pdf_path}:/app/{pdf_filename}",
+                        'ghcr.io/rmitchellscott/ephemeris:main-rmapi0.0.32',
+                        'rmapi', 'put', '--force', f'/app/{pdf_filename}'
+                    ]
+                    pdf_result = subprocess.run(cmd_pdf, capture_output=True, text=True)
+                    
+                    # Clean up temporary PDF
+                    os.remove(temp_pdf_path)
+                    
+                    if pdf_result.returncode == 0:
+                        print("✅ PDF upload successful!")
+                        print("⚠️  Annotations are preserved in the backup file")
+                        print("💡 Use this backup for your next merge to restore annotations")
+                        return True
+                    else:
+                        print(f"❌ PDF upload also failed: {pdf_result.stderr}")
+                        return False
+                else:
+                    print("❌ No PDF found in .rmdoc file")
+                    return False
+        except Exception as e:
+            print(f"❌ Error extracting PDF from .rmdoc: {e}")
+            return False
 
 
 def main():
@@ -345,15 +441,19 @@ def main():
     script_dir = get_script_dir()
     output_dir = os.path.abspath(os.path.join(script_dir, "..", "output"))
     
+    # Step 1: Regenerate PDF from database
     if args.new_pdf:
         new_pdf_path = os.path.abspath(args.new_pdf)
+        print(f"Using provided PDF: {new_pdf_path}")
+        if not os.path.exists(new_pdf_path):
+            print(f"Error: PDF file not found: {new_pdf_path}")
+            sys.exit(1)
     else:
         new_pdf_path = os.path.join(output_dir, f"calendar_{year}.pdf")
-    
-    if not os.path.exists(new_pdf_path):
-        print(f"Error: New calendar PDF not found: {new_pdf_path}")
-        print("Please generate the calendar first or specify --new-pdf")
-        sys.exit(1)
+        # Regenerate PDF from database
+        if not regenerate_pdf_from_db(year, new_pdf_path):
+            print("Failed to regenerate PDF from database")
+            sys.exit(1)
     
     # Find backup file
     if args.backup:
@@ -378,7 +478,7 @@ def main():
     temp_dir = tempfile.mkdtemp(prefix="ephemeris_backup_")
     
     try:
-        # Step 1: Extract contents from backup .rmdoc
+        # Step 2: Extract contents from backup .rmdoc
         extract_dir = os.path.join(temp_dir, "extracted")
         original_pdf, has_annotations, doc_uuid = extract_rmdoc_contents(backup_path, extract_dir)
         
@@ -391,8 +491,8 @@ def main():
             print("⚠️  No annotations found in backup.")
             print("You may want to just upload the new PDF directly.")
         
-        # Step 2: Rebuild .rmdoc with new PDF while preserving original .rm annotation files
-        new_rmdoc_path = os.path.join(output_dir, f"Calendar {year}_merged.rmdoc")
+        # Step 3: Rebuild .rmdoc with new PDF while preserving original .rm annotation files
+        new_rmdoc_path = os.path.join(output_dir, f"Calendar {year}.rmdoc")
         rebuilt = rebuild_rmdoc_with_new_pdf(extract_dir, doc_uuid, new_pdf_path, new_rmdoc_path)
         
         if not rebuilt:
@@ -401,7 +501,7 @@ def main():
         
         print(f"\n✅ Created merged .rmdoc: {new_rmdoc_path}")
         
-        # Step 3: Upload the rebuilt .rmdoc (unless --no-upload)
+        # Step 4: Upload the rebuilt .rmdoc (unless --no-upload)
         if not args.no_upload:
             doc_name = f"Calendar {year}"
             success = upload_rmdoc(new_rmdoc_path, doc_name)
