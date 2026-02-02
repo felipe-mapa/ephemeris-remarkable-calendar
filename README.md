@@ -162,6 +162,22 @@ You can also run these scripts manually:
 ./scripts/ephemeris.sh generate-full  # Generate full year
 ```
 
+#### Annotation preservation
+
+```bash
+# Preserve annotations when updating calendar (downloads from reMarkable)
+./ephemeris/ephemeris_merge_annotations.py
+
+# Use backup files instead of downloading (faster, offline)
+./ephemeris/ephemeris_merge_from_backup.py
+
+# List available backup files
+./ephemeris/ephemeris_merge_from_backup.py --list-backups
+
+# Use specific backup file
+./ephemeris/ephemeris_merge_from_backup.py --backup backups/Calendar\ 2026_20260202_093512.rmdoc
+```
+
 ## Troubleshooting
 
 - **Fonts not loading**: Check `fonts/` directory
@@ -180,6 +196,10 @@ You can also run these scripts manually:
 - **Script fails when run manually**:
     - Ensure you're in the project directory or use absolute paths
     - Check script permissions: `chmod +x scripts/*.sh`
+- **Backup merge script fails**:
+    - Make script executable: `chmod +x ephemeris/ephemeris_merge_from_backup.py`
+    - Check backup directory: `ls -la backups/`
+    - Ensure new calendar PDF exists: `ls -la output/calendar_*.pdf`
 
 ## License
 
