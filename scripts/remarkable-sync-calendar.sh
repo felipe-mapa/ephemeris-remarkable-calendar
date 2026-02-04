@@ -62,14 +62,19 @@ log_with_timestamp "✅ Events fetched and stored in database"
 log_with_timestamp "📥 Downloading backup from reMarkable..."
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILENAME="${DOC_NAME}_${TIMESTAMP}.rmdoc"
+TEMP_DOWNLOAD="$BACKUP_DIR/$DOC_NAME.rmdoc"
 
+# Download to default location, then rename with timestamp
 docker run --rm \
     -v "$CONFIG_PATH:/root/.config/rmapi" \
     -v "$BACKUP_DIR:/backup" \
+    -w /backup \
     ghcr.io/rmitchellscott/ephemeris:main-rmapi0.0.32 \
-    rmapi get "$DOC_NAME" -o "/backup/$BACKUP_FILENAME" 2>&1 | grep -v "^$" || true
+    rmapi get "$DOC_NAME" 2>&1 | grep -v "^$" || true
 
-if [ -f "$BACKUP_DIR/$BACKUP_FILENAME" ]; then
+# Check if download succeeded and rename with timestamp
+if [ -f "$TEMP_DOWNLOAD" ]; then
+    mv "$TEMP_DOWNLOAD" "$BACKUP_DIR/$BACKUP_FILENAME"
     log_with_timestamp "✅ Backup downloaded: $BACKUP_FILENAME"
     
     # Step 3: Regenerate PDF from database and merge with backup annotations
