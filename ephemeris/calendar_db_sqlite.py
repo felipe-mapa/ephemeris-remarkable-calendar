@@ -136,6 +136,24 @@ def add_events(events: Dict[str, List[Dict]]):
     conn.commit()
     conn.close()
 
+def clear_date_range(start_date: str, end_date: str):
+    """Delete all events in a date range"""
+    init_db()
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        DELETE FROM events
+        WHERE date >= ? AND date <= ?
+    ''', (start_date, end_date))
+    
+    deleted_count = cursor.rowcount
+    conn.commit()
+    conn.close()
+    
+    return deleted_count
+
 def get_events_for_date_range(start_date: str, end_date: str) -> Dict[str, List[Dict]]:
     """Get all events for a date range"""
     init_db()

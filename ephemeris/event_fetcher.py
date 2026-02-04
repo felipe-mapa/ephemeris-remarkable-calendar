@@ -128,6 +128,10 @@ def fetch_and_save_events(start_date: date, end_date: date):
     config = load_config()
     all_events = {}
     
+    # Clear existing events for this date range first
+    print(f"Clearing existing events from {start_date} to {end_date}...", file=sys.stderr)
+    calendar_db.clear_date_range(start_date.isoformat(), end_date.isoformat())
+    
     for calendar_config in config.get("calendars", []):
         name = calendar_config.get("name", "Unknown")
         source = calendar_config.get("source")
