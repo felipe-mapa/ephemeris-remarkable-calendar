@@ -3,20 +3,12 @@
 # Daily calendar sync script
 # Downloads backup, regenerates calendar from database, merges annotations, and uploads
 
-# Logging function with timestamp (logs only)
-log_with_timestamp() {
-    local LOG_FILE="$LOGS_DIR/remarkable-sync.log"
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
-}
-
-# Create logs directory if it doesn't exist
+# Source shared functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-LOGS_DIR="$PROJECT_ROOT/logs"
-BACKUP_DIR="$PROJECT_ROOT/backups"
-CONFIG_PATH="$PROJECT_ROOT/config/.rmapi"
-mkdir -p "$LOGS_DIR"
-mkdir -p "$BACKUP_DIR"
+source "$SCRIPT_DIR/helpers/functions.sh"
+
+# Setup common paths
+setup_common_paths "$SCRIPT_DIR"
 
 # Lock file to prevent concurrent executions
 LOCK_FILE="$LOGS_DIR/ephemeris_sync.lock"
@@ -60,21 +52,11 @@ log_with_timestamp "✅ Events fetched and stored in database"
 
 # Step 2: Download current calendar backup from reMarkable
 log_with_timestamp "📥 Downloading backup from reMarkable..."
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-BACKUP_FILENAME="${DOC_NAME}_${TIMESTAMP}.rmdoc"
-TEMP_DOWNLOAD="$BACKUP_DIR/$DOC_NAME.rmdoc"
 
-# Download to default location, then rename with timestamp
-docker run --rm \
-    -v "$CONFIG_PATH:/root/.config/rmapi" \
-    -v "$BACKUP_DIR:/backup" \
-    -w /backup \
-    ghcr.io/rmitchellscott/ephemeris:main-rmapi0.0.32 \
-    rmapi get "$DOC_NAME" 2>&1 | grep -v "^$" || true
+# Call the common backup function
+BACKUP_FILENAME=$(backup_from_remarkable "$DOC_NAME" "$BACKUP_DIR" "$CONFIG_PATH")
 
-# Check if download succeeded and rename with timestamp
-if [ -f "$TEMP_DOWNLOAD" ]; then
-    mv "$TEMP_DOWNLOAD" "$BACKUP_DIR/$BACKUP_FILENAME"
+if [ $? -eq 0 ] && [ -n "$BACKUP_FILENAME" ]; then
     log_with_timestamp "✅ Backup downloaded: $BACKUP_FILENAME"
     
     # Step 3: Regenerate PDF from database and merge with backup annotations

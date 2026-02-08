@@ -7,20 +7,15 @@
 
 set -e
 
+# Source shared functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-BACKUP_DIR="$PROJECT_ROOT/backups"
-CONFIG_PATH="$PROJECT_ROOT/config/.rmapi"
+source "$SCRIPT_DIR/helpers/functions.sh"
+
+# Setup common paths
+setup_common_paths "$SCRIPT_DIR"
 
 # Get document name from argument or use default
 DOC_NAME=${1:-"Calendar $(date +%Y)"}
-
-# Create backup directory if it doesn't exist
-mkdir -p "$BACKUP_DIR"
-
-# Generate timestamp for backup filename
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-BACKUP_FILENAME="${DOC_NAME}_${TIMESTAMP}.rmdoc"
 
 echo "=== Ephemeris Calendar Backup ==="
 echo "Document: $DOC_NAME"
@@ -42,24 +37,20 @@ docker run --rm \
     rmapi ls
 echo ""
 
-# Download the document using rmapi in Docker
+# Call the shared backup function
 echo "Downloading $DOC_NAME from reMarkable..."
-docker run --rm \
-    -v "$CONFIG_PATH:/root/.config/rmapi" \
-    -v "$BACKUP_DIR:/backup" \
-    ghcr.io/rmitchellscott/ephemeris:main-rmapi0.0.32 \
-    rmapi get "$DOC_NAME" -o "/backup/$BACKUP_FILENAME"
+BACKUP_FILENAME=$(backup_from_remarkable "$DOC_NAME" "$BACKUP_DIR" "$CONFIG_PATH")
 
-if [ $? -eq 0 ]; then
+if [ $? -eq 0 ] && [ -n "$BACKUP_FILENAME" ]; then
     echo ""
     echo "✅ Backup successful!"
     echo "📁 Saved to: $BACKUP_DIR/$BACKUP_FILENAME"
     
     # Show backup file size
-    if [ -f "$BACKUP_DIR/$BACKUP_FILENAME" ]; then
-        SIZE=$(du -h "$BACKUP_DIR/$BACKUP_FILENAME" | cut -f1)
-        echo "📊 File size: $SIZE"
-    fi
+    SIZE=$(du -h "$BACKUP_DIR/$BACKUP_FILENAME" | cut -f1)
+    echo "📊 File size: $SIZE"
+    echo ""
+    echo "🎉 Backup completed successfully"
 else
     echo ""
     echo "❌ Backup failed!"
