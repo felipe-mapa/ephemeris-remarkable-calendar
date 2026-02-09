@@ -123,6 +123,50 @@ def extract_events_for_range(cal: Calendar, start_date: date, end_date: date, co
     
     return events_by_date
 
+def fetch_events_only(start_date: date, end_date: date):
+    """Fetch events from all calendars without saving to database"""
+    config = load_config()
+    all_events = {}
+    
+    for calendar_config in config.get("calendars", []):
+        name = calendar_config.get("name", "Unknown")
+        source = calendar_config.get("source")
+        color = calendar_config.get("color", "black")
+        
+        if not source:
+            print(f"Skipping {name}: no source configured", file=sys.stderr)
+            continue
+        
+        print(f"Fetching {name} from {source[:50]}...", file=sys.stderr)
+        
+        try:
+            cal = fetch_ics(source)
+            events = extract_events_for_range(cal, start_date, end_date, color, name)
+            
+            # Merge events
+            for date_str, date_events in events.items():
+                if date_str not in all_events:
+                    all_events[date_str] = []
+                all_events[date_str].extend(date_events)
+            
+            event_count = sum(len(e) for e in events.values())
+            print(f"  Found {event_count} events", file=sys.stderr)
+            
+        except Exception as e:
+            print(f"  Error fetching {name}: {e}", file=sys.stderr)
+            raise
+    
+    total = sum(len(e) for e in all_events.values())
+    print(f"Fetched {total} events total", file=sys.stderr)
+    
+    return all_events
+
+def save_events_to_db(events: dict):
+    """Save events to database"""
+    calendar_db.add_events(events)
+    total = sum(len(e) for e in events.values())
+    print(f"Saved {total} events to database", file=sys.stderr)
+
 def fetch_and_save_events(start_date: date, end_date: date):
     """Fetch events from all calendars and save to database"""
     config = load_config()
