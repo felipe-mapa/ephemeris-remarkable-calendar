@@ -314,71 +314,86 @@ def rebuild_rmdoc_with_new_pdf(extract_dir, doc_uuid, new_pdf_path, output_rmdoc
     return output_rmdoc_path
 
 
-def upload_rmdoc(rmdoc_path, doc_name):
-    """Upload the .rmdoc file to reMarkable, fall back to PDF if .rmdoc fails."""
-    print(f"Uploading .rmdoc to reMarkable...")
-    
+def delete_remote_document(doc_name, output_dir):
+    """Try to delete an existing document from reMarkable. Returns True if deleted or not found."""
     config_path = get_config_path()
-    rmdoc_filename = os.path.basename(rmdoc_path)
-    
-    # Try to upload the .rmdoc file
-    print(f"Uploading document as: {rmdoc_filename}")
-    cmd_put = [
+    cmd_rm = [
         'docker', 'run', '--rm',
         '-v', f"{config_path}:/root/.config/rmapi",
-        '-v', f"{rmdoc_path}:/app/{rmdoc_filename}",
+        '-v', f"{output_dir}:/app/output",
         'ghcr.io/rmitchellscott/ephemeris:main-rmapi0.0.32',
-        'rmapi', 'put', '--force', f'/app/{rmdoc_filename}'
+        'rmapi', 'rm', doc_name
     ]
-    result = subprocess.run(cmd_put, capture_output=True, text=True)
-    
+    result = subprocess.run(cmd_rm, capture_output=True, text=True)
     if result.returncode == 0:
-        print("✅ Upload successful!")
+        print(f"Deleted existing document: {doc_name}")
         return True
-    else:
-        print(f"❌ .rmdoc upload failed: {result.stderr}")
-        print("🔄 Falling back to PDF upload (annotations will be preserved in next backup)")
-        
-        # Extract the PDF from the .rmdoc and upload it
-        try:
-            # Extract PDF from .rmdoc
-            with zipfile.ZipFile(rmdoc_path, 'r') as zf:
-                pdf_files = [f for f in zf.namelist() if f.endswith('.pdf')]
-                if pdf_files:
-                    # Extract the PDF to a temporary location
-                    pdf_data = zf.read(pdf_files[0])
-                    temp_pdf_path = rmdoc_path.replace('.rmdoc', '.pdf')
-                    with open(temp_pdf_path, 'wb') as f:
-                        f.write(pdf_data)
-                    
-                    # Upload the PDF
-                    pdf_filename = os.path.basename(temp_pdf_path)
-                    cmd_pdf = [
-                        'docker', 'run', '--rm',
-                        '-v', f"{config_path}:/root/.config/rmapi",
-                        '-v', f"{temp_pdf_path}:/app/{pdf_filename}",
-                        'ghcr.io/rmitchellscott/ephemeris:main-rmapi0.0.32',
-                        'rmapi', 'put', '--force', f'/app/{pdf_filename}'
-                    ]
-                    pdf_result = subprocess.run(cmd_pdf, capture_output=True, text=True)
-                    
-                    # Clean up temporary PDF
-                    os.remove(temp_pdf_path)
-                    
-                    if pdf_result.returncode == 0:
-                        print("✅ PDF upload successful!")
-                        print("⚠️  Annotations are preserved in the backup file")
-                        print("💡 Use this backup for your next merge to restore annotations")
-                        return True
-                    else:
-                        print(f"❌ PDF upload also failed: {pdf_result.stderr}")
-                        return False
-                else:
-                    print("❌ No PDF found in .rmdoc file")
-                    return False
-        except Exception as e:
-            print(f"❌ Error extracting PDF from .rmdoc: {e}")
+    # If not found, that's fine — nothing to delete
+    if 'not found' in result.stderr.lower() or 'no such' in result.stderr.lower():
+        return True
+    print(f"Could not delete existing document (will attempt upload anyway): {result.stderr.strip()}")
+    return False
+
+
+def upload_rmdoc(rmdoc_path, doc_name):
+    """Upload calendar to reMarkable using PDF with --content-only to replace existing content."""
+    print(f"Uploading to reMarkable...")
+
+    config_path = get_config_path()
+    rmdoc_dir = os.path.dirname(rmdoc_path)
+
+    def run_put(extra_flags, filename):
+        return subprocess.run([
+            'docker', 'run', '--rm',
+            '-v', f"{config_path}:/root/.config/rmapi",
+            '-v', f"{rmdoc_dir}:/app/output",
+            '-w', '/app/output',
+            'ghcr.io/rmitchellscott/ephemeris:main-rmapi0.0.32',
+            'rmapi', 'put', *extra_flags, filename
+        ], capture_output=True, text=True)
+
+    # Extract PDF from the .rmdoc and upload with --content-only.
+    # rmapi --content-only replaces document content without a delete+recreate,
+    # avoiding the 400 error from the reMarkable delete API.
+    # (rmapi does not support --content-only for .rmdoc files, only PDF.)
+    try:
+        with zipfile.ZipFile(rmdoc_path, 'r') as zf:
+            pdf_files = [f for f in zf.namelist() if f.endswith('.pdf')]
+            if not pdf_files:
+                print("❌ No PDF found in .rmdoc file")
+                return False
+            pdf_data = zf.read(pdf_files[0])
+
+        # Filename must match the existing document name on the device
+        temp_pdf_path = os.path.join(rmdoc_dir, f"{doc_name}.pdf")
+        with open(temp_pdf_path, 'wb') as f:
+            f.write(pdf_data)
+
+        pdf_filename = os.path.basename(temp_pdf_path)
+        print(f"Uploading as: {pdf_filename}")
+        result = run_put(['--content-only'], pdf_filename)
+
+        # If document doesn't exist yet, upload fresh without --content-only
+        if result.returncode != 0 and (
+            'not found' in result.stderr.lower() or 'no such' in result.stderr.lower()
+        ):
+            print("Document not found remotely, uploading fresh...")
+            result = run_put([], pdf_filename)
+
+        os.remove(temp_pdf_path)
+
+        if result.returncode == 0:
+            print("✅ Upload successful!")
+            print("⚠️  Annotations are preserved in the backup file")
+            print("💡 Use this backup for your next merge to restore annotations")
+            return True
+        else:
+            print(f"❌ Upload failed: {result.stderr}")
             return False
+
+    except Exception as e:
+        print(f"❌ Error during upload: {e}")
+        return False
 
 
 def main():
