@@ -37,7 +37,7 @@ fi
 echo "Available documents on reMarkable:"
 docker run --rm \
     -v "$CONFIG_PATH:/root/.config/rmapi" \
-    ghcr.io/rmitchellscott/ephemeris:main-rmapi0.0.32 \
+    "$RMAPI_IMAGE" \
     rmapi ls
 echo ""
 

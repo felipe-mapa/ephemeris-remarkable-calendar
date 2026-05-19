@@ -321,7 +321,7 @@ def delete_remote_document(doc_name, output_dir):
         'docker', 'run', '--rm',
         '-v', f"{config_path}:/root/.config/rmapi",
         '-v', f"{output_dir}:/app/output",
-        'ghcr.io/rmitchellscott/ephemeris:main-rmapi0.0.32',
+        'ephemeris-rmapi:latest',
         'rmapi', 'rm', doc_name
     ]
     result = subprocess.run(cmd_rm, capture_output=True, text=True)
@@ -348,7 +348,7 @@ def upload_rmdoc(rmdoc_path, doc_name):
             '-v', f"{config_path}:/root/.config/rmapi",
             '-v', f"{rmdoc_dir}:/app/output",
             '-w', '/app/output',
-            'ghcr.io/rmitchellscott/ephemeris:main-rmapi0.0.32',
+            'ephemeris-rmapi:latest',
             'rmapi', 'put', *extra_flags, filename
         ], capture_output=True, text=True)
 

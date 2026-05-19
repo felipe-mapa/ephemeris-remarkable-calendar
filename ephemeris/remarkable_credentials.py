@@ -81,7 +81,7 @@ def setup_credentials():
         subprocess.run([
             "docker", "run", "--rm", "-it",
             "-v", f"{config_dir}:/root/.config/rmapi",
-            "ghcr.io/rmitchellscott/ephemeris:main-rmapi0.0.32",
+            "ephemeris-rmapi:latest",
             "rmapi", "init"
         ], check=True)
         

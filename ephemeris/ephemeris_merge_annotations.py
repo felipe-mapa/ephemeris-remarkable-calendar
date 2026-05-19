@@ -40,7 +40,7 @@ def run_rmapi_command(output_dir, *args):
         '-v', f"{config_path}:/root/.config/rmapi",
         '-v', f"{output_dir}:/app/output",
         '-w', '/app/output',
-        'ghcr.io/rmitchellscott/ephemeris:main-rmapi0.0.32',
+        'ephemeris-rmapi:latest',
         'rmapi'
     ] + list(args)
     
@@ -381,7 +381,7 @@ def upload_rmdoc(rmdoc_path, doc_name):
         'docker', 'run', '--rm',
         '-v', f"{config_path}:/root/.config/rmapi",
         '-v', f"{rmdoc_path}:/app/{rmdoc_filename}",
-        'ghcr.io/rmitchellscott/ephemeris:main-rmapi0.0.32',
+        'ephemeris-rmapi:latest',
         'rmapi', 'put', '--force', f'/app/{rmdoc_filename}'
     ]
     result = subprocess.run(cmd_put, capture_output=True, text=True)
@@ -408,7 +408,7 @@ def upload_merged(pdf_path, year):
         'docker', 'run', '--rm',
         '-v', f"{os.path.dirname(pdf_path)}:/app/output",
         '-v', f"{os.path.dirname(os.path.abspath(__file__))}/../config/.rmapi:/root/.config/rmapi",
-        'ghcr.io/rmitchellscott/ephemeris:main-rmapi0.0.32',
+        'ephemeris-rmapi:latest',
         'rmapi', 'put', '--force', f"/app/output/Calendar {year}.pdf"
     ], check=True)
     
