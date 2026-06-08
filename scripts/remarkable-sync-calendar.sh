@@ -36,19 +36,33 @@ trap "rm -f '$LOCK_FILE'" EXIT INT TERM
 
 log_with_timestamp "🔍 Starting remarkable sync calendar"
 
+# Parse arguments
+SKIP_FETCH=false
+for arg in "$@"; do
+    case "$arg" in
+        --skip-fetch)
+            SKIP_FETCH=true
+            ;;
+    esac
+done
+
 # Get current year for document name
 YEAR=$(date +%Y)
 DOC_NAME="Calendar $YEAR"
 
 # Step 1: Fetch new events from calendars and store in database
-log_with_timestamp "📅 Fetching events for next 7 days..."
-cd "$SCRIPT_DIR" || exit 1
-if ! ./ephemeris.sh generate 7; then
-    log_with_timestamp "❌ ERROR: Failed to fetch calendar events"
-    osascript -e 'display notification "❌ Failed to fetch calendar events" with title "Remarkable Sync Calendar Error" subtitle "Generate command failed"'
-    exit 1
+if [ "$SKIP_FETCH" = true ]; then
+    log_with_timestamp "⏭️  Skipping calendar fetch (--skip-fetch), using existing database"
+else
+    log_with_timestamp "📅 Fetching events for next 7 days..."
+    cd "$SCRIPT_DIR" || exit 1
+    if ! ./ephemeris.sh generate 7; then
+        log_with_timestamp "❌ ERROR: Failed to fetch calendar events"
+        osascript -e 'display notification "❌ Failed to fetch calendar events" with title "Remarkable Sync Calendar Error" subtitle "Generate command failed"'
+        exit 1
+    fi
+    log_with_timestamp "✅ Events fetched and stored in database"
 fi
-log_with_timestamp "✅ Events fetched and stored in database"
 
 # Step 2: Download current calendar backup from reMarkable
 log_with_timestamp "📥 Downloading backup from reMarkable..."
