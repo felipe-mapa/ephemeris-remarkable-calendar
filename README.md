@@ -94,6 +94,57 @@ month_gap_h = 12
 month_gap_v = 12
 ```
 
+## Upload Any File to reMarkable
+
+Upload any PDF (or other file) directly to your reMarkable:
+
+```bash
+# Upload to reMarkable root
+python upload_to_remarkable.py ~/Documents/notes.pdf
+
+# Upload to a specific folder on the device
+python upload_to_remarkable.py report.pdf --dest "/My Folder"
+```
+
+### Finder Right-Click Quick Action (macOS)
+
+Add an "Upload to reMarkable" option to the Finder right-click menu:
+
+1. Open **Automator** → New Document → **Quick Action**
+
+2. At the top of the workflow, set:
+   - **Workflow receives current** → `files or folders`
+   - **in** → `Finder`
+
+3. Search for **"Run Shell Script"** in the action library and drag it into the workflow
+
+4. Set **Pass input** → `as arguments`
+
+5. Paste this script (update the path if your project lives elsewhere):
+   ```bash
+   PROJECT="/Users/felipepavanela/Documents/Dev/ephemeris-remarkable-calendar"
+   LOG="$PROJECT/logs/upload-quick-action.log"
+   mkdir -p "$PROJECT/logs"
+
+   osascript -e 'display notification "Starting upload..." with title "reMarkable"'
+
+   while IFS= read -r f; do
+       [[ -z "$f" ]] && continue
+       filename=$(basename "$f")
+       echo "Uploading: $f" >> "$LOG"
+
+       if "$PROJECT/venv/bin/python3" "$PROJECT/upload_to_remarkable.py" "$f" >> "$LOG" 2>&1; then
+           osascript -e "display notification \"\\\"$filename\\\" uploaded successfully!\" with title \"reMarkable\""
+       else
+           osascript -e "display notification \"Failed to upload \\\"$filename\\\"\" with title \"reMarkable\""
+       fi
+   done
+   ```
+
+6. Save (`Cmd+S`) → name it **"Upload to reMarkable"**
+
+Right-click any file in Finder → **Quick Actions** → **Upload to reMarkable**. Logs are written to `logs/upload-quick-action.log`.
+
 ## Automation
 
 ### Daily Sync with macOS Shortcuts (Recommended)
