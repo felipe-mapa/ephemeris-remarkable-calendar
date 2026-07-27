@@ -21,6 +21,11 @@ backup_from_remarkable() {
     TEMP_DOWNLOAD="$BACKUP_DIR/$DOC_NAME.rmdoc"
     
     # Download to default location, then rename with timestamp
+    if ! docker info >/dev/null 2>&1; then
+        log_with_timestamp "❌ Docker daemon is not reachable (is Docker Desktop running?)"
+        return 1
+    fi
+
     RMAPI_OUTPUT=$(docker run --rm \
         -v "$CONFIG_PATH:/root/.config/rmapi" \
         -v "$BACKUP_DIR:/backup" \
@@ -28,7 +33,7 @@ backup_from_remarkable() {
         "$RMAPI_IMAGE" \
         rmapi get "$DOC_NAME" 2>&1) || true
     if [ -n "$RMAPI_OUTPUT" ]; then
-        echo "[backup_from_remarkable] rmapi output: $RMAPI_OUTPUT" >&2
+        log_with_timestamp "[backup_from_remarkable] rmapi output: $RMAPI_OUTPUT"
     fi
     
     # Check if download succeeded and rename with timestamp

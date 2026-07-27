@@ -76,10 +76,13 @@ if [ $? -eq 0 ] && [ -n "$BACKUP_FILENAME" ]; then
     # Step 3: Regenerate PDF from database and merge with backup annotations
     log_with_timestamp "🔄 Regenerating calendar and merging annotations..."
     cd "$PROJECT_ROOT" || exit 1
-    if ./ephemeris/ephemeris_merge_from_backup.py --backup "$BACKUP_DIR/$BACKUP_FILENAME"; then
+    MERGE_OUTPUT=$(./ephemeris/ephemeris_merge_from_backup.py --backup "$BACKUP_DIR/$BACKUP_FILENAME" 2>&1)
+    MERGE_STATUS=$?
+    if [ $MERGE_STATUS -eq 0 ]; then
         log_with_timestamp "✅ Calendar merged and uploaded"
     else
         log_with_timestamp "❌ ERROR: Failed to merge calendar"
+        log_with_timestamp "[merge output] $MERGE_OUTPUT"
         osascript -e 'display notification "❌ Failed to merge calendar" with title "Remarkable Sync Calendar Error" subtitle "Merge command failed"' 2>/dev/null || true
         exit 1
     fi
@@ -89,10 +92,13 @@ else
     if [ -n "$LATEST_LOCAL_BACKUP" ]; then
         log_with_timestamp "⚠️  Live backup unavailable, using local backup: $(basename "$LATEST_LOCAL_BACKUP")"
         cd "$PROJECT_ROOT" || exit 1
-        if ./ephemeris/ephemeris_merge_from_backup.py --backup "$LATEST_LOCAL_BACKUP"; then
+        MERGE_OUTPUT=$(./ephemeris/ephemeris_merge_from_backup.py --backup "$LATEST_LOCAL_BACKUP" 2>&1)
+        MERGE_STATUS=$?
+        if [ $MERGE_STATUS -eq 0 ]; then
             log_with_timestamp "✅ Calendar merged and uploaded from local backup"
         else
             log_with_timestamp "❌ ERROR: Failed to merge from local backup"
+            log_with_timestamp "[merge output] $MERGE_OUTPUT"
             osascript -e 'display notification "❌ Failed to merge from local backup" with title "Remarkable Sync Calendar Error" subtitle "Merge from backup failed"' 2>/dev/null || true
             exit 1
         fi
@@ -100,10 +106,13 @@ else
         # No backup at all — upload a fresh PDF
         log_with_timestamp "⚠️  No backup found, uploading fresh calendar..."
         cd "$SCRIPT_DIR" || exit 1
-        if ./ephemeris.sh upload; then
+        UPLOAD_OUTPUT=$(./ephemeris.sh upload 2>&1)
+        UPLOAD_STATUS=$?
+        if [ $UPLOAD_STATUS -eq 0 ]; then
             log_with_timestamp "✅ Fresh calendar uploaded"
         else
             log_with_timestamp "❌ ERROR: Failed to upload calendar"
+            log_with_timestamp "[upload output] $UPLOAD_OUTPUT"
             osascript -e 'display notification "❌ Failed to upload calendar" with title "Remarkable Sync Calendar Error" subtitle "Upload command failed"' 2>/dev/null || true
             exit 1
         fi

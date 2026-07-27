@@ -242,47 +242,64 @@ def rebuild_rmdoc_with_new_pdf(extract_dir, doc_uuid, new_pdf_path, output_rmdoc
     with open(content_path, 'r') as f:
         content = json.load(f)
     
-    old_pages = content.get('pages', [])
-    old_page_count = len(old_pages)
-    print(f"Old document had {old_page_count} pages")
-    
+    # Page structure lives under content['cPages']['pages'] (list of dicts with
+    # 'id'/'idx'/'redir'/'template'), not a flat top-level 'pages' list of UUIDs —
+    # that legacy field doesn't exist in current .content files.
+    cpages = content.setdefault('cPages', {})
+    old_pages_list = cpages.get('pages', [])
+    old_page_count = len(old_pages_list)
+    print(f"Old document had {old_page_count} pages (cPages)")
+
     # Find which pages have .rm annotation files
     rm_dir = os.path.join(extract_dir, doc_uuid)
-    annotated_pages = {}  # page_uuid -> page_index
+    annotated_ids = set()
     if os.path.isdir(rm_dir):
-        for f in os.listdir(rm_dir):
-            if f.endswith('.rm'):
-                page_uuid = f.replace('.rm', '')
-                if page_uuid in old_pages:
-                    annotated_pages[page_uuid] = old_pages.index(page_uuid)
-                    print(f"  Found annotation for page {annotated_pages[page_uuid]}: {page_uuid}")
-    
-    # Build new pages array
-    # Keep annotated pages at their original positions, generate new UUIDs for others
-    new_pages = []
-    for i in range(new_page_count):
-        # Check if there's an annotation for this page index
-        found_uuid = None
-        for page_uuid, page_idx in annotated_pages.items():
-            if page_idx == i:
-                found_uuid = page_uuid
-                break
-        
-        if found_uuid:
-            new_pages.append(found_uuid)
+        annotated_ids = {f[:-3] for f in os.listdir(rm_dir) if f.endswith('.rm')}
+
+    old_id_index = {page['id']: i for i, page in enumerate(old_pages_list)}
+    for page_uuid in sorted(annotated_ids):
+        if page_uuid in old_id_index:
+            print(f"  Found annotation for page {old_id_index[page_uuid]}: {page_uuid}")
         else:
-            # Generate new UUID for pages without annotations
-            new_pages.append(str(uuid_module.uuid4()))
-    
+            print(f"  ⚠️  Annotation file {page_uuid}.rm has no matching page in cPages")
+
+    # Keep the overlapping prefix of pages exactly as-is (same id/idx/redir/template),
+    # so annotations stay attached to their existing page. Only the tail differs
+    # when the new PDF has a different page count than the backup.
+    keep_count = min(old_page_count, new_page_count)
+    new_pages_list = old_pages_list[:keep_count]
+
+    if new_page_count > old_page_count:
+        last_idx = new_pages_list[-1]['idx']['value'] if new_pages_list else 'a'
+        last_ts = new_pages_list[-1]['idx']['timestamp'] if new_pages_list else '1:1'
+        for i in range(old_page_count, new_page_count):
+            last_idx += 'a'  # extends the previous idx string, so it still sorts after it
+            new_pages_list.append({
+                'id': str(uuid_module.uuid4()),
+                'idx': {'timestamp': last_ts, 'value': last_idx},
+                'redir': {'timestamp': last_ts, 'value': i},
+                'template': {'timestamp': last_ts, 'value': 'Blank'},
+            })
+        print(f"  Added {new_page_count - old_page_count} new blank page(s) at the end")
+    elif new_page_count < old_page_count:
+        dropped = old_pages_list[new_page_count:]
+        dropped_annotated = [p['id'] for p in dropped if p['id'] in annotated_ids]
+        if dropped_annotated:
+            print(f"  ⚠️  Dropping {len(dropped)} trailing page(s); annotations on {len(dropped_annotated)} of them will be lost: {dropped_annotated}")
+        else:
+            print(f"  Dropping {len(dropped)} trailing page(s) (no annotations lost)")
+
+    cpages['pages'] = new_pages_list
+
+    # lastOpened points at a page id — make sure it still refers to a page that exists
+    valid_ids = {page['id'] for page in new_pages_list}
+    last_opened = cpages.get('lastOpened')
+    if new_pages_list and last_opened and last_opened.get('value') not in valid_ids:
+        last_opened['value'] = new_pages_list[0]['id']
+
     # Update the content
-    content['pages'] = new_pages
     content['pageCount'] = new_page_count
-    content['originalPageCount'] = new_page_count
-    
-    # Update redirectionPageMap if it exists
-    if 'redirectionPageMap' in content:
-        content['redirectionPageMap'] = list(range(new_page_count))
-    
+
     # Write updated .content file
     with open(content_path, 'w') as f:
         json.dump(content, f, indent=4)
