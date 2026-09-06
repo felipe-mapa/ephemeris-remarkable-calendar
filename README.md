@@ -32,6 +32,47 @@ A clean, minimalist calendar generator for the reMarkable tablet with interactiv
 4. **Configure calendars** (optional)
     - Edit `config/config.yaml` to add your calendar sources
 
+## Web app
+
+A local web app (TypeScript, React, React Router, Tailwind) wraps every script in one place: browse events month by month, remove events (soft delete, so they stay out of the PDF and do not come back on the next sync), add events that are not linked to Google Calendar, sync the calendar feeds into the database and push the calendar to the reMarkable with annotations preserved.
+
+```bash
+cd app
+npm install
+npm run dev        # server on :3210 + Vite client on http://localhost:5173
+```
+
+For a single-process setup build the client once and start the server, which then serves it on http://localhost:3210:
+
+```bash
+npm run build && npm start
+```
+
+Buttons in the header:
+
+- **Sync calendar** fetches the next 30 days from the feeds in `config/config.yaml` into `output/calendar.db`.
+- **Update reMarkable** regenerates the year PDF from the database, downloads the current device copy, merges your handwritten annotations and uploads.
+
+The Activity page streams the log of every run and exposes the individual steps (full daily sync, whole-year fetch, PDF only, device backup only).
+
+### Command line
+
+The orchestration that used to live in the shell scripts is now `app/src/cli.ts`; the shell scripts under `scripts/` are thin wrappers around it, so existing Shortcuts automations keep working.
+
+```bash
+cd app
+npm run cli -- sync [--skip-fetch] [--days 7]   # daily flow: fetch, backup, merge annotations, upload
+npm run cli -- fetch [days]                     # refresh Google events for the next N days (default 30)
+npm run cli -- fetch-year [year]                # refresh Google events for a whole year
+npm run cli -- generate [year]                  # render the year PDF from the database
+npm run cli -- upload                           # backup + merge annotations + upload, no fetch
+npm run cli -- backup ["Calendar 2026"]         # download the device copy into backups/
+npm run cli -- stats
+npm test                                        # unit tests for the DB layer, ICS expansion and API
+```
+
+PDF rendering (`ephemeris.py`) and the `.rmdoc` annotation merge remain in Python and are spawned by the Node code, so the `venv/` is still required. `ephemeris/event_fetcher.py` is superseded by `app/src/server/ics.ts`.
+
 ## Commands
 
 ```bash
@@ -243,6 +284,8 @@ python3 ephemeris/calendar_db_sqlite.py export
 
 # Database backups are automatically created in backups/db/
 ```
+
+The `events` table has two extra columns managed by the web app: `source` (`google` or `manual`) and `deleted_at` (soft delete). Syncing only replaces non-deleted Google rows, so manual and removed events survive.
 
 ## Troubleshooting
 

@@ -63,6 +63,13 @@ def init_db():
         CREATE UNIQUE INDEX IF NOT EXISTS idx_event_unique ON events(date, summary, dtstart)
     ''')
     
+    # Columns added by the web app (app/src/server/db.ts): event origin and soft delete.
+    existing = {row[1] for row in cursor.execute('PRAGMA table_info(events)').fetchall()}
+    if 'source' not in existing:
+        cursor.execute("ALTER TABLE events ADD COLUMN source TEXT NOT NULL DEFAULT 'google'")
+    if 'deleted_at' not in existing:
+        cursor.execute("ALTER TABLE events ADD COLUMN deleted_at TEXT")
+    
     conn.commit()
     conn.close()
     
@@ -145,7 +152,7 @@ def clear_date_range(start_date: str, end_date: str):
     
     cursor.execute('''
         DELETE FROM events
-        WHERE date >= ? AND date <= ?
+        WHERE date >= ? AND date <= ? AND source = 'google' AND deleted_at IS NULL
     ''', (start_date, end_date))
     
     deleted_count = cursor.rowcount
@@ -164,7 +171,7 @@ def get_events_for_date_range(start_date: str, end_date: str) -> Dict[str, List[
     cursor.execute('''
         SELECT date, summary, description, location, dtstart, dtend, color, calendar, all_day
         FROM events
-        WHERE date >= ? AND date <= ?
+        WHERE date >= ? AND date <= ? AND deleted_at IS NULL
         ORDER BY date, dtstart
     ''', (start_date, end_date))
     
@@ -199,6 +206,7 @@ def get_all_events() -> Dict[str, List[Dict]]:
     cursor.execute('''
         SELECT date, summary, description, location, dtstart, dtend, color, calendar, all_day
         FROM events
+        WHERE deleted_at IS NULL
         ORDER BY date, dtstart
     ''')
     
@@ -230,7 +238,7 @@ def clear_events_for_date_range(start_date: str, end_date: str):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
-    cursor.execute('DELETE FROM events WHERE date >= ? AND date <= ?', (start_date, end_date))
+    cursor.execute("DELETE FROM events WHERE date >= ? AND date <= ? AND source = 'google' AND deleted_at IS NULL", (start_date, end_date))
     
     conn.commit()
     conn.close()
@@ -242,7 +250,7 @@ def clear_all_events():
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
-    cursor.execute('DELETE FROM events')
+    cursor.execute("DELETE FROM events WHERE source = 'google' AND deleted_at IS NULL")
     
     conn.commit()
     conn.close()
@@ -254,13 +262,13 @@ def get_stats():
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
-    cursor.execute('SELECT COUNT(*) FROM events')
+    cursor.execute('SELECT COUNT(*) FROM events WHERE deleted_at IS NULL')
     total_events = cursor.fetchone()[0]
     
-    cursor.execute('SELECT COUNT(DISTINCT date) FROM events')
+    cursor.execute('SELECT COUNT(DISTINCT date) FROM events WHERE deleted_at IS NULL')
     total_dates = cursor.fetchone()[0]
     
-    cursor.execute('SELECT MIN(date), MAX(date) FROM events')
+    cursor.execute('SELECT MIN(date), MAX(date) FROM events WHERE deleted_at IS NULL')
     date_range = cursor.fetchone()
     
     conn.close()

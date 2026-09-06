@@ -193,6 +193,7 @@ async def load_events_from_db() -> list[tuple]:
     cursor.execute('''
         SELECT date, summary, description, location, dtstart, dtend, color, calendar, all_day
         FROM events
+        WHERE deleted_at IS NULL
         ORDER BY date, dtstart
     ''')
     

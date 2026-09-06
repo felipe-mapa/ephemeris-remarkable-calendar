@@ -1,0 +1,32 @@
+@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap");
+
+@theme {
+  --color-paper: #ededea;
+  --color-paper-raised: #f6f6f3;
+  --color-ink: #161616;
+  --color-ink-soft: #3d3d3a;
+  --color-muted: #6f6f6b;
+  --color-rule: #c9c9c5;
+  --color-rule-soft: #dcdcd8;
+  --color-marker: #f3e27a;
+  --color-marker-deep: #d9c64a;
+  --font-sans: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+}
+
+html, body, #root { height: 100%; }
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "tnum" 1;
+  -webkit-font-smoothing: antialiased;
+}
+*:focus-visible { outline: 2px solid var(--color-ink); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+.btn { @apply inline-flex items-center gap-2 h-9 px-3.5 text-sm font-medium border border-ink rounded-sm bg-paper-raised hover:bg-ink hover:text-paper-raised disabled:opacity-40 disabled:hover:bg-paper-raised disabled:hover:text-ink transition-colors; }
+.btn-primary { @apply bg-ink text-paper-raised hover:bg-ink-soft; }
+.btn-quiet { @apply border-transparent bg-transparent hover:bg-rule-soft hover:text-ink; }
+.field { @apply w-full h-9 px-2.5 text-sm bg-paper-raised border border-rule rounded-sm focus:border-ink; }
+.field-area { @apply w-full px-2.5 py-2 text-sm bg-paper-raised border border-rule rounded-sm focus:border-ink; }
