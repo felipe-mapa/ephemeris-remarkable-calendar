@@ -8,7 +8,7 @@ function Header() {
   return (
     <header className="border-b border-ink">
       <div className="flex items-center gap-6 px-6 h-14">
-        <Link to="/" className="text-lg font-semibold tracking-tight">Ephemeris</Link>
+        <Link to="/" className="text-lg font-semibold tracking-tight">reMarkableCalendar</Link>
         <nav className="flex items-center gap-1 text-sm">
           <NavLink to="/" className={({ isActive }) => `px-2 py-1 rounded-sm ${isActive ? 'bg-rule-soft' : 'text-muted hover:text-ink'}`}>Calendar</NavLink>
           <NavLink to="/activity" className={({ isActive }) => `px-2 py-1 rounded-sm ${isActive ? 'bg-rule-soft' : 'text-muted hover:text-ink'}`}>Activity</NavLink>

@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Command-line entry point replacing scripts/ephemeris.sh, scripts/remarkable-sync-calendar.sh
+ * Command-line entry point replacing scripts/remarkable_calendar.sh, scripts/remarkable-sync-calendar.sh
  * and scripts/backup-calendar.sh.
  *
  *   npm run cli -- sync [--skip-fetch] [--days N]   daily flow: fetch, backup, merge annotations, upload

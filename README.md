@@ -1,4 +1,4 @@
-# Ephemeris - reMarkable Calendar Generator
+# reMarkableCalendar - reMarkable Calendar Generator
 
 A clean, minimalist calendar generator for the reMarkable tablet with interactive year view and daily pages.
 
@@ -7,8 +7,8 @@ A clean, minimalist calendar generator for the reMarkable tablet with interactiv
 1. **Clone the repository**
 
     ```bash
-    git clone https://github.com/felipe-mapa/ephemeris-remarkable-calendar.git
-    cd ephemeris-remarkable-calendar
+    git clone https://github.com/felipe-mapa/reMarkableCalendar.git
+    cd reMarkableCalendar
     ```
 
 2. **Install dependencies**
@@ -26,7 +26,7 @@ A clean, minimalist calendar generator for the reMarkable tablet with interactiv
 
     ```bash
     cd scripts
-    ./ephemeris.sh generate-full
+    ./remarkable_calendar.sh generate-full
     ```
 
 4. **Configure calendars** (optional)
@@ -71,14 +71,14 @@ npm run cli -- stats
 npm test                                        # unit tests for the DB layer, ICS expansion and API
 ```
 
-PDF rendering (`ephemeris.py`) and the `.rmdoc` annotation merge remain in Python and are spawned by the Node code, so the `venv/` is still required. `ephemeris/event_fetcher.py` is superseded by `app/src/server/ics.ts`.
+PDF rendering (`remarkable_calendar.py`) and the `.rmdoc` annotation merge remain in Python and are spawned by the Node code, so the `venv/` is still required. `remarkable_calendar/event_fetcher.py` is superseded by `app/src/server/ics.ts`.
 
 ## Commands
 
 ```bash
-./ephemeris.sh generate 7        # Get calendar events for next 7 days and update year calendar PDF
-./ephemeris.sh generate-full    # Generate calendar for entire year
-./ephemeris.sh upload           # Upload existing PDF to reMarkable
+./remarkable_calendar.sh generate 7        # Get calendar events for next 7 days and update year calendar PDF
+./remarkable_calendar.sh generate-full    # Generate calendar for entire year
+./remarkable_calendar.sh upload           # Upload existing PDF to reMarkable
 ```
 
 ## Test Scripts
@@ -87,20 +87,20 @@ Test calendar designs without fetching real events:
 
 ```bash
 # Daily calendar with sample events
-python ephemeris/test_design.py
+python remarkable_calendar/test_design.py
 
 # Daily calendar for specific date
-python ephemeris/test_design.py --date 2026-01-20
+python remarkable_calendar/test_design.py --date 2026-01-20
 
 # Empty daily calendar
-python ephemeris/test_design.py --empty
+python remarkable_calendar/test_design.py --empty
 
 # Year calendar
-python ephemeris/test_design.py --year
-python ephemeris/test_design.py --year 2026
+python remarkable_calendar/test_design.py --year
+python remarkable_calendar/test_design.py --year 2026
 
 # Custom output path
-python ephemeris/test_design.py --output output/my_test.pdf
+python remarkable_calendar/test_design.py --output output/my_test.pdf
 ```
 
 ## Configuration
@@ -120,9 +120,9 @@ layout:
 
 ## Customization
 
-- **Year calendar**: Edit `ephemeris/year_calendar.py`
-- **Daily pages**: Edit `ephemeris/renderers.py`
-- **Settings**: Edit `ephemeris/settings.py`
+- **Year calendar**: Edit `remarkable_calendar/year_calendar.py`
+- **Daily pages**: Edit `remarkable_calendar/renderers.py`
+- **Settings**: Edit `remarkable_calendar/settings.py`
 
 Common changes:
 
@@ -163,7 +163,7 @@ Add an "Upload to reMarkable" option to the Finder right-click menu:
 
 5. Paste this script (update the path if your project lives elsewhere):
    ```bash
-   PROJECT="/Users/felipepavanela/Documents/Dev/ephemeris-remarkable-calendar"
+   PROJECT="/Users/felipepavanela/Documents/Dev/reMarkableCalendar"
    LOG="$PROJECT/logs/upload-quick-action.log"
    mkdir -p "$PROJECT/logs"
 
@@ -194,14 +194,14 @@ Set up automatic daily calendar sync using macOS Shortcuts:
 
 1. **Open Shortcuts app** (macOS Monterey or later)
 
-2. **Create new shortcut** named "Ephemeris Daily Sync"
+2. **Create new shortcut** named "reMarkableCalendar Daily Sync"
    - Add action: **Run Shell Script**
    - Paste this script:
      ```bash
-     {root_path_to_project}/ephemeris-remarkable-calendar/scripts/remarkable-sync-calendar.sh
+     {root_path_to_project}/reMarkableCalendar/scripts/remarkable-sync-calendar.sh
      ```
    - Add action: **Show Notification** (optional)
-     - Title: `Ephemeris Sync Complete`
+     - Title: `reMarkableCalendar Sync Complete`
      - Body: `Calendar synced to reMarkable`
 
 3. **Create automation**
@@ -209,7 +209,7 @@ Set up automatic daily calendar sync using macOS Shortcuts:
    - Click **+** → **Personal Automation**
    - Select **Time of Day** → Choose your preferred time (e.g., 9:00 AM)
    - Set to repeat: **Daily**
-   - Add action: **Run Shortcut** → Select "Ephemeris Daily Sync"
+   - Add action: **Run Shortcut** → Select "reMarkableCalendar Daily Sync"
    - **Disable** "Ask Before Running"
 
 This will:
@@ -226,15 +226,15 @@ If you prefer using Calendar app:
    - Open **Automator** → New **Application**
    - Add action: **Run Shell Script**
      ```bash
-     /Users/felipepavanela/Documents/Dev/ephemeris-remarkable-calendar/scripts/remarkable-sync-calendar.sh
+     /Users/felipepavanela/Documents/Dev/reMarkableCalendar/scripts/remarkable-sync-calendar.sh
      ```
-   - Save as `EphemerisSync.app` in `~/Applications/`
+   - Save as `reMarkableCalendarSync.app` in `~/Applications/`
 
 2. **Set up Calendar alarm**
    - Open **Calendar** app
-   - Create new event: "Ephemeris Sync"
+   - Create new event: "reMarkableCalendar Sync"
    - Set to repeat: **Daily** at your preferred time
-   - Add alert: **Custom** → **Open file** → Select `EphemerisSync.app`
+   - Add alert: **Custom** → **Open file** → Select `reMarkableCalendarSync.app`
 
 ### Manual Scripts
 
@@ -246,41 +246,41 @@ You can also run these scripts manually:
 ./scripts/remarkable-sync-calendar.sh
 ```
 
-#### Core ephemeris commands
+#### Core reMarkableCalendar commands
 
 ```bash
-./scripts/ephemeris.sh generate 7     # Generate next 7 days
-./scripts/ephemeris.sh upload         # Upload to reMarkable
-./scripts/ephemeris.sh generate-full  # Generate full year
+./scripts/remarkable_calendar.sh generate 7     # Generate next 7 days
+./scripts/remarkable_calendar.sh upload         # Upload to reMarkable
+./scripts/remarkable_calendar.sh generate-full  # Generate full year
 ```
 
 #### Annotation preservation
 
 ```bash
 # Preserve annotations when updating calendar (downloads from reMarkable)
-./ephemeris/ephemeris_merge_annotations.py
+./remarkable_calendar/remarkable_calendar_merge_annotations.py
 
 # Regenerate PDF from database and merge with backup annotations
-./ephemeris/ephemeris_merge_from_backup.py
+./remarkable_calendar/remarkable_calendar_merge_from_backup.py
 
 # List available backup files
-./ephemeris/ephemeris_merge_from_backup.py --list-backups
+./remarkable_calendar/remarkable_calendar_merge_from_backup.py --list-backups
 
 # Use specific backup file
-./ephemeris/ephemeris_merge_from_backup.py --backup "backups/Calendar 2026_20260202_093512.rmdoc"
+./remarkable_calendar/remarkable_calendar_merge_from_backup.py --backup "backups/Calendar 2026_20260202_093512.rmdoc"
 
 # Skip upload (just create merged .rmdoc)
-./ephemeris/ephemeris_merge_from_backup.py --no-upload
+./remarkable_calendar/remarkable_calendar_merge_from_backup.py --no-upload
 ```
 
 #### Database management
 
 ```bash
 # View database statistics
-python3 ephemeris/calendar_db_sqlite.py stats
+python3 remarkable_calendar/calendar_db_sqlite.py stats
 
 # Export all events from database
-python3 ephemeris/calendar_db_sqlite.py export
+python3 remarkable_calendar/calendar_db_sqlite.py export
 
 # Database backups are automatically created in backups/db/
 ```
@@ -300,13 +300,13 @@ The `events` table has two extra columns managed by the web app: `source` (`goog
     - **Calendar Alarm**: Ensure Calendar has permission to run applications in System Settings → Privacy & Security → Automation
     - Check logs: `tail -f logs/remarkable-sync.log`
 - **Multiple daily runs**:
-    - Check marker file: `ls -la logs/ephemeris_run_$(date +%Y-%m-%d)`
-    - Manually delete marker file to force run: `rm logs/ephemeris_run_$(date +%Y-%m-%d)`
+    - Check marker file: `ls -la logs/remarkable_calendar_run_$(date +%Y-%m-%d)`
+    - Manually delete marker file to force run: `rm logs/remarkable_calendar_run_$(date +%Y-%m-%d)`
 - **Script fails when run manually**:
     - Ensure you're in the project directory or use absolute paths
     - Check script permissions: `chmod +x scripts/*.sh`
 - **Backup merge script fails**:
-    - Make script executable: `chmod +x ephemeris/ephemeris_merge_from_backup.py`
+    - Make script executable: `chmod +x remarkable_calendar/remarkable_calendar_merge_from_backup.py`
     - Check backup directory: `ls -la backups/`
     - Ensure new calendar PDF exists: `ls -la output/calendar_*.pdf`
 

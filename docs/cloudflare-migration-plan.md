@@ -1,4 +1,4 @@
-# Ephemeris → Cloudflare Web Application: Migration Plan
+# reMarkableCalendar → Cloudflare Web Application: Migration Plan
 
 **Target shape:** multi-user SaaS, TypeScript renderer (no containers), server-side reMarkable sync.
 
@@ -9,17 +9,17 @@
 A single-user CLI pipeline, orchestrated by bash + macOS Shortcuts:
 
 1. **Fetch** — `event_fetcher.py` / `calendar_loader.py` pull ICS feeds listed in `config/config.yaml`, expand recurrences (`dateutil.rrule`), and write to a local SQLite `events` table.
-2. **Render** — `ephemeris.py` reads events from SQLite and drives ReportLab to emit a year-view cover page plus one page per day (366 pages, ~4 MB) into `output/calendar_2026.pdf`.
-3. **Sync** — `ephemeris_merge_from_backup.py` downloads the existing `Calendar 2026.rmdoc` from the reMarkable cloud (via a patched `rmapi` Go binary in Docker), unzips it, swaps in the new PDF, rewrites the `.content` page array so annotated page UUIDs stay at their original indices, rezips, and re-uploads with `put --force`.
+2. **Render** — `remarkable_calendar.py` reads events from SQLite and drives ReportLab to emit a year-view cover page plus one page per day (366 pages, ~4 MB) into `output/calendar_2026.pdf`.
+3. **Sync** — `remarkable_calendar_merge_from_backup.py` downloads the existing `Calendar 2026.rmdoc` from the reMarkable cloud (via a patched `rmapi` Go binary in Docker), unzips it, swaps in the new PDF, rewrites the `.content` page array so annotated page UUIDs stay at their original indices, rezips, and re-uploads with `put --force`.
 4. **Schedule** — `scripts/remarkable-sync-calendar.sh` with a PID lock file, fired daily by a macOS Shortcut.
 
-Roughly 5,700 lines of Python. Configuration is split between `config/config.yaml` (calendar sources) and ~50 environment variables read by `ephemeris/settings.py` (layout, colors, hours, sidebar, page geometry).
+Roughly 5,700 lines of Python. Configuration is split between `config/config.yaml` (calendar sources) and ~50 environment variables read by `remarkable_calendar/settings.py` (layout, colors, hours, sidebar, page geometry).
 
 ### Observations that shape the port
 
 - **Rendering is pure.** No `datetime.now()` / `date.today()` anywhere in `renderers.py`, `year_calendar.py`, or `layout.py`. A page is a deterministic function of `(day, events, valid_dates, settings)`. This makes incremental page re-rendering safe — see §6.
 - **The current sync is enormously wasteful.** It fetches 7 days of events and then regenerates all 366 pages. At single-user scale that is invisible; per-user-per-day in a SaaS it would be the dominant cost.
-- **Two parallel ICS implementations exist.** `event_fetcher.py` (sync, `requests`, hardcoded `Pacific/Auckland`, imports `calendar_db_sqlite` as a top-level module so it only runs from inside `ephemeris/`) and `calendar_loader.py` (async, `aiohttp`, VTIMEZONE-aware, honours `settings.TZ_LOCAL`). The port should collapse these into one implementation — `calendar_loader.py` is the better base.
+- **Two parallel ICS implementations exist.** `event_fetcher.py` (sync, `requests`, hardcoded `Pacific/Auckland`, imports `calendar_db_sqlite` as a top-level module so it only runs from inside `remarkable_calendar/`) and `calendar_loader.py` (async, `aiohttp`, VTIMEZONE-aware, honours `settings.TZ_LOCAL`). The port should collapse these into one implementation — `calendar_loader.py` is the better base.
 - **The event dedupe key is `(date, summary, dtstart)`.** No calendar, no user, no ICS UID. This must change for multi-tenancy, and storing `uid` + `recurrence_id` would also make override handling (`build_override_map`) correct rather than approximate.
 - **Heavy deps are mostly vestigial.** `PyMuPDF`, `CairoSVG`, and `Pillow` are in `requirements.txt` but unused; PNG export shells out to Poppler's `pdftocairo`. The real rendering dependency is ReportLab alone — which is what makes a pdf-lib port tractable.
 - **Secret hygiene is currently fine.** `config/*`, `output/`, `backups/`, and `logs/` are all gitignored; only `assets/cover.pdf` and `.gitkeep` files are tracked. The reMarkable device token in `config/.rmapi` has never been committed.
@@ -193,7 +193,7 @@ Page indices stay stable, so the annotation merge in §7 keeps working unchanged
 
 **Merge — preferred (raw blob tree):** rather than round-tripping the whole `.rmdoc` zip, use `RawRemarkableApi` to read the document's file list, upload the new PDF as a blob, rewrite the `.content` JSON (page array, `pageCount`, `originalPageCount`, `redirectionPageMap`) while retaining the existing `.rm` page blob hashes, and commit a new root. The annotations never need to be downloaded — only their hashes are referenced. That is both faster and dramatically cheaper on bandwidth than today's approach, which pulls a 4 MB archive every run.
 
-**Merge — fallback (zip):** replicate the current logic with `fflate`, which works in Workers. Functionally identical to `ephemeris_merge_from_backup.py`.
+**Merge — fallback (zip):** replicate the current logic with `fflate`, which works in Workers. Functionally identical to `remarkable_calendar_merge_from_backup.py`.
 
 **Backups:** before committing, write the prior `.content` + blob manifest (or the full `.rmdoc` on the zip path) to R2 under `u/{userId}/backups/`, with a 30-day lifecycle rule. This replaces the 1 GB of local `.rmdoc` files, which have no retention policy today.
 

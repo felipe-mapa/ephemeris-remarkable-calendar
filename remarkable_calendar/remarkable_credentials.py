@@ -81,7 +81,7 @@ def setup_credentials():
         subprocess.run([
             "docker", "run", "--rm", "-it",
             "-v", f"{config_dir}:/root/.config/rmapi",
-            "ephemeris-rmapi:latest",
+            "remarkable-calendar-rmapi:latest",
             "rmapi", "init"
         ], check=True)
         

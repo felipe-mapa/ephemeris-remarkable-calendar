@@ -11,7 +11,7 @@ const today = () => DateTime.now().setZone(TIMEZONE);
 export const currentYear = () => today().year;
 export const docNameForYear = (year: number) => `Calendar ${year}`;
 
-/** Step 1 of ephemeris.sh generate: refresh Google events for the next N days. */
+/** Step 1 of remarkable_calendar.sh generate: refresh Google events for the next N days. */
 export async function fetchEvents(ctx: JobContext, store: EventStore, days: number): Promise<{ inserted: number; failures: string[] }> {
   const start = today().toISODate() as string;
   const end = today().plus({ days }).toISODate() as string;
@@ -39,12 +39,12 @@ function ensurePython() {
   }
 }
 
-/** Port of generate_pdf() in ephemeris.sh: render the full-year PDF from the database. */
+/** Port of generate_pdf() in remarkable_calendar.sh: render the full-year PDF from the database. */
 export async function generatePdf(ctx: JobContext, year: number = currentYear()): Promise<string> {
   ensurePython();
   const out = pdfPathForYear(year);
   ctx.log(`🖨️  Generating PDF for ${year}...`);
-  const res = await ctx.run(paths.venvPython, [paths.ephemerisPy], {
+  const res = await ctx.run(paths.venvPython, [paths.remarkableCalendarPy], {
     env: {
       TIME_DATE_RANGE: `${year}-01-01:${year}-12-31`,
       APP_OUTPUT_PDF_PATH: out,
@@ -68,7 +68,7 @@ async function dockerAvailable(ctx: JobContext): Promise<boolean> {
 
 function requireRmapiConfig() {
   if (!fs.existsSync(paths.rmapiConfig)) {
-    throw new Error(`rmapi config not found at ${paths.rmapiConfig}. Run: venv/bin/python3 ephemeris/remarkable_credentials.py setup`);
+    throw new Error(`rmapi config not found at ${paths.rmapiConfig}. Run: venv/bin/python3 remarkable_calendar/remarkable_credentials.py setup`);
   }
 }
 
@@ -121,7 +121,7 @@ export function listBackups(year: number) {
     .sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt));
 }
 
-/** Regenerate the PDF from the DB and merge it with a backup's annotations, then upload (ephemeris_merge_from_backup.py). */
+/** Regenerate the PDF from the DB and merge it with a backup's annotations, then upload (remarkable_calendar_merge_from_backup.py). */
 async function mergeFromBackup(ctx: JobContext, backupPath: string, year: number) {
   ensurePython();
   ctx.log('🔄 Regenerating calendar and merging annotations...');
@@ -130,7 +130,7 @@ async function mergeFromBackup(ctx: JobContext, backupPath: string, year: number
   ctx.log('✅ Calendar merged and uploaded');
 }
 
-/** ephemeris.sh upload: generate then upload via ephemeris_merge_annotations.py (which itself tries to preserve device annotations). */
+/** remarkable_calendar.sh upload: generate then upload via remarkable_calendar_merge_annotations.py (which itself tries to preserve device annotations). */
 async function uploadFresh(ctx: JobContext, year: number) {
   ensurePython();
   const pdf = pdfPathForYear(year);

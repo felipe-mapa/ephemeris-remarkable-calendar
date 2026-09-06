@@ -10,8 +10,8 @@ import os
 from datetime import datetime, date, timedelta
 from typing import Dict, List
 
-# Add ephemeris to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'ephemeris'))
+# Add remarkable_calendar to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'remarkable_calendar'))
 from event_fetcher import fetch_events_only, load_config
 
 def parse_date(date_str: str) -> date:

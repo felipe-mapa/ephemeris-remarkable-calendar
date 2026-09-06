@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# Shared functions for Ephemeris reMarkable scripts
+# Shared functions for reMarkableCalendar scripts
 # This file contains common functions used by multiple scripts
 
 # Patched rmapi image built locally from ddvk/rmapi main + PRs #63 and #65.
 # The fix adds the .docSchema extension to rm-filename headers, which reMarkable
-# started requiring on ~2026-05-18. Run 'docker build --target ephemeris-rmapi'
+# started requiring on ~2026-05-18. Run 'docker build --target remarkable-calendar-rmapi'
 # to rebuild after pulling upstream changes.
-RMAPI_IMAGE="${RMAPI_IMAGE:-ephemeris-rmapi:latest}"
+RMAPI_IMAGE="${RMAPI_IMAGE:-remarkable-calendar-rmapi:latest}"
 
 # Common function for reMarkable backup operations
 backup_from_remarkable() {

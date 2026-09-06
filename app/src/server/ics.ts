@@ -40,7 +40,7 @@ const iso = (d: DateTime) => d.toISO({ suppressMilliseconds: true }) as string;
 
 /**
  * Expand every VEVENT in an ICS document into per-occurrence rows for [start, end] (inclusive, YYYY-MM-DD).
- * Mirrors ephemeris/event_fetcher.py: one row per occurrence, keyed by the local date of its start.
+ * Mirrors remarkable_calendar/event_fetcher.py: one row per occurrence, keyed by the local date of its start.
  */
 export function expandIcs(
   icsText: string,

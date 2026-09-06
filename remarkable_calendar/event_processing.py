@@ -5,8 +5,8 @@ from dateutil.rrule import rrulestr
 from loguru import logger
 from icalendar import vRecur
 
-import ephemeris.settings as settings
-from ephemeris.utils import fmt_time
+import remarkable_calendar.settings as settings
+from remarkable_calendar.utils import fmt_time
 
 def _get_raw_end(comp):
     """

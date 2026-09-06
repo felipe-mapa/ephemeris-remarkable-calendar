@@ -42,7 +42,7 @@ def get_backup_dir():
 
 
 def regenerate_pdf_from_db(year, output_path):
-    """Regenerate the full calendar PDF from the database using the main ephemeris code"""
+    """Regenerate the full calendar PDF from the database using the main remarkable_calendar code"""
     print(f"Regenerating full calendar PDF from database for year {year}...")
     
     try:
@@ -54,8 +54,8 @@ def regenerate_pdf_from_db(year, output_path):
         if os.path.exists(venv_python) and sys.executable != venv_python:
             print(f"  Using virtual environment Python...")
             
-            # Use the main ephemeris.py to generate the full calendar
-            ephemeris_script = os.path.join(script_dir, "..", "ephemeris.py")
+            # Use the main remarkable_calendar.py to generate the full calendar
+            remarkable_calendar_script = os.path.join(script_dir, "..", "remarkable_calendar.py")
             
             # Set environment variables for the generation
             env = os.environ.copy()
@@ -63,9 +63,9 @@ def regenerate_pdf_from_db(year, output_path):
             env['APP_OUTPUT_PDF_PATH'] = output_path
             env['APP_FORCE_REFRESH'] = 'true'
             
-            # Run ephemeris.py with venv Python
+            # Run remarkable_calendar.py with venv Python
             result = subprocess.run(
-                [venv_python, ephemeris_script],
+                [venv_python, remarkable_calendar_script],
                 capture_output=True,
                 text=True,
                 env=env,
@@ -88,11 +88,11 @@ def regenerate_pdf_from_db(year, output_path):
         os.environ['APP_OUTPUT_PDF_PATH'] = output_path
         os.environ['APP_FORCE_REFRESH'] = 'true'
         
-        # Import and run the main ephemeris function
+        # Import and run the main remarkable_calendar function
         sys.path.insert(0, os.path.join(script_dir, ".."))
-        from ephemeris import main as ephemeris_main
+        from remarkable_calendar import main as remarkable_calendar_main
         
-        asyncio.run(ephemeris_main())
+        asyncio.run(remarkable_calendar_main())
         
         print(f"  ✅ Generated full calendar PDF: {os.path.basename(output_path)}")
         return True
@@ -338,7 +338,7 @@ def delete_remote_document(doc_name, output_dir):
         'docker', 'run', '--rm',
         '-v', f"{config_path}:/root/.config/rmapi",
         '-v', f"{output_dir}:/app/output",
-        'ephemeris-rmapi:latest',
+        'remarkable-calendar-rmapi:latest',
         'rmapi', 'rm', doc_name
     ]
     result = subprocess.run(cmd_rm, capture_output=True, text=True)
@@ -365,7 +365,7 @@ def upload_rmdoc(rmdoc_path, doc_name):
             '-v', f"{config_path}:/root/.config/rmapi",
             '-v', f"{rmdoc_dir}:/app/output",
             '-w', '/app/output',
-            'ephemeris-rmapi:latest',
+            'remarkable-calendar-rmapi:latest',
             'rmapi', 'put', *extra_flags, filename
         ], capture_output=True, text=True)
 
@@ -463,7 +463,7 @@ def main():
                 print(f"{i+1}. {backup_name}")
                 print(f"   Date: {mtime.strftime('%Y-%m-%d %H:%M:%S')}")
                 print(f"   Size: {size_mb:.2f} MB")
-                print(f"   Command: ./ephemeris/ephemeris_merge_from_backup.py --backup \"backups/{backup_name}\"")
+                print(f"   Command: ./remarkable_calendar/remarkable_calendar_merge_from_backup.py --backup \"backups/{backup_name}\"")
                 print()
         return
     
@@ -500,14 +500,14 @@ def main():
             print("Run with --list-backups to see available backups")
             sys.exit(1)
     
-    print(f"=== Ephemeris Annotation Merge (from Backup) ===")
+    print(f"=== reMarkableCalendar Annotation Merge (from Backup) ===")
     print(f"Year: {year}")
     print(f"New PDF: {new_pdf_path}")
     print(f"Backup: {os.path.basename(backup_path)}")
     print()
     
     # Create temp directory
-    temp_dir = tempfile.mkdtemp(prefix="ephemeris_backup_")
+    temp_dir = tempfile.mkdtemp(prefix="remarkable_calendar_backup_")
     
     try:
         # Step 2: Extract contents from backup .rmdoc

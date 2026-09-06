@@ -1,5 +1,5 @@
 #!/bin/bash
-# Ephemeris Calendar Management Script (thin wrapper around the TypeScript CLI in app/)
+# reMarkableCalendar Management Script (thin wrapper around the TypeScript CLI in app/)
 # Commands: generate [days], generate-full [year], upload
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

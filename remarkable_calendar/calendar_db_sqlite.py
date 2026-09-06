@@ -13,7 +13,7 @@ from pathlib import Path
 def get_db_path():
     """Get the absolute path to the database file"""
     try:
-        import ephemeris.settings as settings
+        import remarkable_calendar.settings as settings
         return str(settings.CALENDAR_DB)
     except (ImportError, AttributeError):
         script_dir = os.path.dirname(os.path.abspath(__file__))

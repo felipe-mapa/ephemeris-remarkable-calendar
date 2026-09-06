@@ -10,7 +10,7 @@ Usage:
     # Year calendar
     python scripts/test_design.py --year [YYYY] [--output path/to/output.pdf]
     
-Environment variables (same as main ephemeris.py):
+Environment variables (same as main remarkable_calendar.py):
     DOC_SIDEBAR_ENABLED, DOC_SIDEBAR_WIDTH, DOC_TODO_LINES, DOC_NOTES_LINES, etc.
 """
 
@@ -25,12 +25,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from reportlab.pdfgen import canvas
 
-import ephemeris.settings as settings
-from ephemeris.fonts import init_fonts
-from ephemeris.layout import get_page_size
-from ephemeris.renderers import render_schedule_pdf
-from ephemeris.year_calendar import render_year_calendar
-from ephemeris.logger import configure_logging
+import remarkable_calendar.settings as settings
+from remarkable_calendar.fonts import init_fonts
+from remarkable_calendar.layout import get_page_size
+from remarkable_calendar.renderers import render_schedule_pdf
+from remarkable_calendar.year_calendar import render_year_calendar
+from remarkable_calendar.logger import configure_logging
 
 
 def create_sample_events(target_date: date, tz_local):
@@ -126,7 +126,7 @@ def generate_test_day(
     
     # Create canvas
     c = canvas.Canvas(output_path, pagesize=get_page_size())
-    c.setAuthor("Ephemeris Test")
+    c.setAuthor("reMarkableCalendar Test")
     
     # Add cover bookmark (required by render_schedule_pdf for year link)
     c.bookmarkPage("cover")
@@ -193,7 +193,7 @@ def generate_test_year(
     
     # Create canvas
     c = canvas.Canvas(output_path, pagesize=(width, height))
-    c.setAuthor("Ephemeris Test")
+    c.setAuthor("reMarkableCalendar Test")
     
     # Add cover bookmark
     c.bookmarkPage("cover")

@@ -40,7 +40,7 @@ def run_rmapi_command(output_dir, *args):
         '-v', f"{config_path}:/root/.config/rmapi",
         '-v', f"{output_dir}:/app/output",
         '-w', '/app/output',
-        'ephemeris-rmapi:latest',
+        'remarkable-calendar-rmapi:latest',
         'rmapi'
     ] + list(args)
     
@@ -381,7 +381,7 @@ def upload_rmdoc(rmdoc_path, doc_name):
         'docker', 'run', '--rm',
         '-v', f"{config_path}:/root/.config/rmapi",
         '-v', f"{rmdoc_path}:/app/{rmdoc_filename}",
-        'ephemeris-rmapi:latest',
+        'remarkable-calendar-rmapi:latest',
         'rmapi', 'put', '--force', f'/app/{rmdoc_filename}'
     ]
     result = subprocess.run(cmd_put, capture_output=True, text=True)
@@ -408,7 +408,7 @@ def upload_merged(pdf_path, year):
         'docker', 'run', '--rm',
         '-v', f"{os.path.dirname(pdf_path)}:/app/output",
         '-v', f"{os.path.dirname(os.path.abspath(__file__))}/../config/.rmapi:/root/.config/rmapi",
-        'ephemeris-rmapi:latest',
+        'remarkable-calendar-rmapi:latest',
         'rmapi', 'put', '--force', f"/app/output/Calendar {year}.pdf"
     ], check=True)
     
@@ -426,10 +426,10 @@ def main():
     new_pdf_path = os.path.join(output_dir, f"calendar_{year}.pdf")
     
     # Create separate temp dirs for raw and annotated downloads
-    temp_dir_raw = tempfile.mkdtemp(prefix="ephemeris_raw_")
-    temp_dir_ann = tempfile.mkdtemp(prefix="ephemeris_ann_")
+    temp_dir_raw = tempfile.mkdtemp(prefix="remarkable_calendar_raw_")
+    temp_dir_ann = tempfile.mkdtemp(prefix="remarkable_calendar_ann_")
     
-    print(f"=== Ephemeris Annotation Merge ===")
+    print(f"=== reMarkableCalendar Annotation Merge ===")
     print(f"Year: {year}")
     print(f"New PDF: {new_pdf_path}")
     print()

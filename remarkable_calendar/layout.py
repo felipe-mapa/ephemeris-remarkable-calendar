@@ -4,8 +4,8 @@ from collections import defaultdict
 
 from reportlab.lib.pagesizes import letter
 
-import ephemeris.settings as settings
-from ephemeris.logger import logger
+import remarkable_calendar.settings as settings
+from remarkable_calendar.logger import logger
 
 def get_layout_config(width, height, start_hour=6, end_hour=17):
     # Raw page margins from environment

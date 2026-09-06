@@ -1,7 +1,7 @@
 import yaml
 from loguru import logger
 
-import ephemeris.settings as settings
+import remarkable_calendar.settings as settings
 
 META_FILE = settings.META_FILE
 

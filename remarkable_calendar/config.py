@@ -1,7 +1,7 @@
 import yaml
 from loguru import logger
 
-from ephemeris.utils import css_color_to_hex
+from remarkable_calendar.utils import css_color_to_hex
 
 def load_config(path: str = "config.yaml") -> dict:
     """Load calendar config and normalize colors."""

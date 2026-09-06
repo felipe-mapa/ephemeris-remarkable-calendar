@@ -10,22 +10,22 @@ from loguru import logger
 from reportlab.pdfgen import canvas
 
 
-import ephemeris.settings as settings
-from ephemeris.fonts import init_fonts
-from ephemeris.config import load_config
-from ephemeris.meta import load_meta, save_meta
-from ephemeris.calendar_loader import load_raw_events, load_events_from_db
-from ephemeris.event_processing import (
+import remarkable_calendar.settings as settings
+from remarkable_calendar.fonts import init_fonts
+from remarkable_calendar.config import load_config
+from remarkable_calendar.meta import load_meta, save_meta
+from remarkable_calendar.calendar_loader import load_raw_events, load_events_from_db
+from remarkable_calendar.event_processing import (
     expand_event_for_day,
     split_all_day_events,
     filter_events_for_day,
     compute_events_hash,
 )
-from ephemeris.layout import get_page_size
-from ephemeris.utils import parse_date_range
-from ephemeris.renderers import render_schedule_pdf, export_pdf_to_png
-from ephemeris.year_calendar import render_year_calendar
-from ephemeris.logger import configure_logging
+from remarkable_calendar.layout import get_page_size
+from remarkable_calendar.utils import parse_date_range
+from remarkable_calendar.renderers import render_schedule_pdf, export_pdf_to_png
+from remarkable_calendar.year_calendar import render_year_calendar
+from remarkable_calendar.logger import configure_logging
 
 
 async def main():
@@ -47,7 +47,7 @@ async def main():
     out_pdf = settings.OUTPUT_PDF
     os.makedirs(os.path.dirname(out_pdf), exist_ok=True)
     c = canvas.Canvas(out_pdf, pagesize=get_page_size())
-    c.setAuthor("Ephemeris")
+    c.setAuthor("reMarkableCalendar")
     if settings.SEPARATE_TEXT:
         bg_pdf = out_pdf.replace('.pdf', '_bg.pdf')
         text_pdf = out_pdf.replace('.pdf', '_text.pdf')
@@ -78,7 +78,7 @@ async def main():
         logger.info("Events changed, refreshing...")
 
     # 7) Build override map
-    from ephemeris.event_processing import build_override_map
+    from remarkable_calendar.event_processing import build_override_map
     override_map = build_override_map(raw_events)
 
     counts = Counter(cal_name for _, _, _, cal_name in raw_events)

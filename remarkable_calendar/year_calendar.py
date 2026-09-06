@@ -9,8 +9,8 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.colors import black, white, HexColor
 from loguru import logger
 
-import ephemeris.settings as settings
-from ephemeris.utils import css_color_to_hex
+import remarkable_calendar.settings as settings
+from remarkable_calendar.utils import css_color_to_hex
 
 
 def render_year_calendar(

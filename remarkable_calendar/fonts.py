@@ -3,7 +3,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from loguru import logger
 
-from ephemeris.settings import FONTS_DIR
+from remarkable_calendar.settings import FONTS_DIR
 
 def init_fonts(fonts_dir: Path | None = None) -> None:
     """

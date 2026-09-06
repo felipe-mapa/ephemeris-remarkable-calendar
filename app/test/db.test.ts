@@ -3,7 +3,7 @@ import Database from 'better-sqlite3';
 import { EventStore, type NewEvent } from '../src/server/db.js';
 
 function legacyDb(): Database.Database {
-  // Mirrors the schema created by ephemeris/calendar_db_sqlite.py before this app existed.
+  // Mirrors the schema created by remarkable_calendar/calendar_db_sqlite.py before this app existed.
   const db = new Database(':memory:');
   db.exec(`
     CREATE TABLE events (

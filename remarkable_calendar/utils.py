@@ -5,7 +5,7 @@ import webcolors
 from dateutil import tz
 from dateutil.relativedelta import relativedelta
 
-from ephemeris.settings import USE_24H
+from remarkable_calendar.settings import USE_24H
 
 # Local: none
 

@@ -10,8 +10,8 @@ from icalendar import Calendar as iCal, Event as iCalEvent
 from dateutil import tz as dateutil_tz
 from loguru import logger
 
-import ephemeris.settings as settings
-from ephemeris.calendar_db_sqlite import get_db_path
+import remarkable_calendar.settings as settings
+from remarkable_calendar.calendar_db_sqlite import get_db_path
 
 
 async def download_calendar_async(session: aiohttp.ClientSession, source: str) -> bytes:

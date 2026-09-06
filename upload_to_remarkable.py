@@ -43,7 +43,7 @@ def upload_file(file_path: str, dest_folder: str = "/") -> bool:
     config_path = get_config_path()
     if not config_path.exists():
         print(f"Error: reMarkable credentials not found at {config_path}")
-        print("Run the setup first: python ephemeris/remarkable_credentials.py setup")
+        print("Run the setup first: python remarkable_calendar/remarkable_credentials.py setup")
         return False
 
     try:
@@ -65,7 +65,7 @@ def upload_file(file_path: str, dest_folder: str = "/") -> bool:
         docker, "run", "--rm",
         "-v", f"{config_path}:/root/.config/rmapi",
         "-v", f"{file_dir}:/upload",
-        "ephemeris-rmapi:latest",
+        "remarkable-calendar-rmapi:latest",
         "rmapi",
     ] + rmapi_args
 

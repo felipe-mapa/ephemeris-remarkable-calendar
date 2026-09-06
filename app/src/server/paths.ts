@@ -15,14 +15,14 @@ export const paths = {
   dbBackups: path.join(PROJECT_ROOT, 'backups', 'db'),
   logs: path.join(PROJECT_ROOT, 'logs'),
   syncLog: path.join(PROJECT_ROOT, 'logs', 'remarkable-sync.log'),
-  lockFile: path.join(PROJECT_ROOT, 'logs', 'ephemeris_sync.lock'),
+  lockFile: path.join(PROJECT_ROOT, 'logs', 'remarkable_calendar_sync.lock'),
   venvPython: path.join(PROJECT_ROOT, 'venv', 'bin', 'python3'),
-  ephemerisPy: path.join(PROJECT_ROOT, 'ephemeris.py'),
-  mergeFromBackupPy: path.join(PROJECT_ROOT, 'ephemeris', 'ephemeris_merge_from_backup.py'),
-  mergeAnnotationsPy: path.join(PROJECT_ROOT, 'ephemeris', 'ephemeris_merge_annotations.py'),
+  remarkableCalendarPy: path.join(PROJECT_ROOT, 'remarkable_calendar.py'),
+  mergeFromBackupPy: path.join(PROJECT_ROOT, 'remarkable_calendar', 'remarkable_calendar_merge_from_backup.py'),
+  mergeAnnotationsPy: path.join(PROJECT_ROOT, 'remarkable_calendar', 'remarkable_calendar_merge_annotations.py'),
   clientDist: path.resolve(here, '..', '..', 'dist'),
 };
 
 export const TIMEZONE = process.env.TZ ?? process.env.TIME_ZONE ?? 'Pacific/Auckland';
-export const RMAPI_IMAGE = process.env.RMAPI_IMAGE ?? 'ephemeris-rmapi:latest';
+export const RMAPI_IMAGE = process.env.RMAPI_IMAGE ?? 'remarkable-calendar-rmapi:latest';
 export const pdfPathForYear = (year: number) => path.join(paths.output, `calendar_${year}.pdf`);

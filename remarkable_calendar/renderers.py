@@ -13,10 +13,10 @@ from reportlab.pdfbase import pdfmetrics
 
 
 
-import ephemeris.settings as settings
-from ephemeris.layout import get_layout_config, time_to_y, get_page_size
-from ephemeris.event_processing import assign_stacks
-from ephemeris.utils import css_color_to_hex, fmt_time
+import remarkable_calendar.settings as settings
+from remarkable_calendar.layout import get_layout_config, time_to_y, get_page_size
+from remarkable_calendar.event_processing import assign_stacks
+from remarkable_calendar.utils import css_color_to_hex, fmt_time
 
 
 def ensure_hex_color(color_value):
@@ -1420,14 +1420,14 @@ def export_pdf_to_png(pdf_path: str,
 
     subprocess.run(args, check=True)
 
-    # rename page-N.png → cover.png / ephemeris_YYYY-MM-DD.png
+    # rename page-N.png → cover.png / remarkable_calendar_YYYY-MM-DD.png
     for file in sorted(out_dir.glob("page-*.png")):
         idx = int(file.stem.split('-')[1])  # 1-based page number
         if cover and idx == 1:
             new_name = out_dir / "cover.png"
         else:
             date = date_list[idx - (1 if cover else 0) - 1]
-            new_name = out_dir / f"ephemeris_{date.isoformat()}.png"
+            new_name = out_dir / f"remarkable_calendar_{date.isoformat()}.png"
         file.rename(new_name)
 
     return str(out_dir)

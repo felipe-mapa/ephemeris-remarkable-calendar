@@ -20,5 +20,5 @@ if (fs.existsSync(paths.clientDist)) {
 }
 
 serve({ fetch: app.fetch, port: PORT }, (info) => {
-  console.log(`Ephemeris server on http://localhost:${info.port} (tz ${TIMEZONE}, db ${paths.db})`);
+  console.log(`reMarkableCalendar server on http://localhost:${info.port} (tz ${TIMEZONE}, db ${paths.db})`);
 });
