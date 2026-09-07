@@ -136,6 +136,39 @@ export function listBackups(year: number) {
     .sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt));
 }
 
+const DAY_MS = 86_400_000;
+const BACKUP_STAMP_RE = /_\d{8}_\d{6}\.rmdoc$/;
+
+/**
+ * Delete device backups older than `keepDays` (default 7). The newest backup of each
+ * document ("Calendar 2026", "Calendar 2027", ...) is always kept so a merge source survives.
+ */
+export function pruneBackups(opts: { dir?: string; keepDays?: number; now?: number; log?: (line: string) => void } = {}): string[] {
+  const dir = opts.dir ?? paths.backups;
+  const keepDays = opts.keepDays ?? 7;
+  const now = opts.now ?? Date.now();
+  if (!fs.existsSync(dir)) return [];
+  const files = fs
+    .readdirSync(dir)
+    .filter((f) => BACKUP_STAMP_RE.test(f))
+    .map((f) => ({ f, doc: f.replace(BACKUP_STAMP_RE, ''), m: fs.statSync(path.join(dir, f)).mtimeMs }))
+    .sort((a, b) => b.m - a.m);
+  const newestSeen = new Set<string>();
+  const removed: string[] = [];
+  for (const { f, doc, m } of files) {
+    if (!newestSeen.has(doc)) {
+      newestSeen.add(doc);
+      continue;
+    }
+    if (m < now - keepDays * DAY_MS) {
+      fs.rmSync(path.join(dir, f), { force: true });
+      removed.push(f);
+    }
+  }
+  if (removed.length) opts.log?.(`🧹 Removed ${removed.length} backup(s) older than ${keepDays} days`);
+  return removed;
+}
+
 /** Regenerate the PDF from the DB and merge it with a backup's annotations, then upload (remarkable_calendar_merge_from_backup.py). */
 async function mergeFromBackup(ctx: JobContext, store: EventStore, backupPath: string, year: number) {
   ensurePython();
@@ -187,5 +220,6 @@ export async function updateRemarkable(ctx: JobContext, store: EventStore, opts:
       await uploadFresh(ctx, store, year);
     }
   }
+  pruneBackups({ log: ctx.log });
   ctx.log('✅ Calendar sync completed');
 }
