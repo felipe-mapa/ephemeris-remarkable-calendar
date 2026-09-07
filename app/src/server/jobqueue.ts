@@ -20,7 +20,7 @@ export interface QueuedJob {
 }
 
 interface JobRow {
-  id: string; kind: JobKind; status: QueuedStatus; payload: Record<string, unknown>; requested_by: RequestedBy;
+  id: string; kind: JobKind; status: QueuedStatus; payload: Record<string, unknown> | string; requested_by: RequestedBy;
   error: string | null; log: string; created_at: Date; started_at: Date | null; finished_at: Date | null;
 }
 
