@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DateTime } from 'luxon';
 import { EventStore } from './db.js';
-import { loadCalendarSources } from './config.js';
+import { listCalendarSources } from './sources.js';
 import { fetchAllSources } from './ics.js';
 import type { JobContext } from './jobs.js';
 import { paths, pdfPathForYear, RMAPI_IMAGE, TIMEZONE } from './paths.js';
@@ -20,16 +20,14 @@ export async function fetchEvents(ctx: JobContext, store: EventStore, days: numb
 
 export async function fetchEventsRange(ctx: JobContext, store: EventStore, start: string, end: string) {
   ctx.log(`📅 Fetching events from ${start} to ${end}...`);
-  const sources = loadCalendarSources();
-  if (sources.length === 0) ctx.log('⚠️  No calendars configured in config/config.yaml');
+  const sources = await listCalendarSources(store.sql, store.userId);
+  if (sources.length === 0) ctx.log('⚠️  No calendar sources configured. Add one with: npm run cli -- add-source <name> <url> [color]');
   const { events, failures } = await fetchAllSources(sources, start, end, { log: ctx.log });
   if (failures.length === sources.length && sources.length > 0) {
     throw new Error(`All calendar feeds failed: ${failures.join(', ')}`);
   }
-  const inserted = store.replaceGoogleRange(start, end, events);
+  const inserted = await store.replaceGoogleRange(start, end, events);
   ctx.log(`Saved ${inserted} events to database`);
-  const backup = await store.backupFile();
-  if (backup) ctx.log(`  📋 Created database backup: ${path.basename(backup)}`);
   return { inserted, failures };
 }
 

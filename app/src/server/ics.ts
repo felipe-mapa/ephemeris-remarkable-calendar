@@ -3,7 +3,7 @@ import ICAL from 'ical.js';
 import { DateTime } from 'luxon';
 import type { NewEvent } from './db.js';
 import { TIMEZONE } from './paths.js';
-import type { CalendarSource } from './config.js';
+import type { CalendarSource } from './sources.js';
 
 export interface FetchOptions {
   timezone?: string;
