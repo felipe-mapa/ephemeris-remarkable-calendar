@@ -3,10 +3,11 @@ export interface CalendarEvent {
   dtstart: string; dtend: string; color: string; calendar: string; allDay: boolean;
   source: 'google' | 'manual'; deletedAt: string | null; createdAt: string;
 }
-export type JobKind = 'sync' | 'fetch' | 'generate' | 'remarkable' | 'backup';
+export type JobKind = 'sync' | 'fetch' | 'fetch-year' | 'generate' | 'remarkable' | 'backup';
 export interface Job {
-  id: string; kind: JobKind; status: 'running' | 'succeeded' | 'failed';
-  startedAt: string; finishedAt: string | null; error: string | null; lines?: string[]; lineCount?: number;
+  id: string; kind: JobKind; status: 'queued' | 'running' | 'succeeded' | 'failed';
+  startedAt: string | null; finishedAt: string | null; error: string | null; lines?: string[]; lineCount?: number;
+  createdAt?: string; requestedBy?: 'web' | 'cli' | 'cron';
 }
 export interface Status {
   timezone: string; today: string;
@@ -62,6 +63,7 @@ export function formatTime(iso: string): string {
 export const JOB_LABELS: Record<JobKind, string> = {
   sync: 'Sync calendar and update reMarkable',
   fetch: 'Sync calendar',
+  'fetch-year': 'Sync whole year',
   generate: 'Generate PDF',
   remarkable: 'Update reMarkable',
   backup: 'Back up from reMarkable',

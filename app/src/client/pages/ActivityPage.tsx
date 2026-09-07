@@ -83,7 +83,9 @@ export default function ActivityPage() {
                     aria-hidden
                   />
                   <span className="truncate">{JOB_LABELS[j.kind]}</span>
-                  <span className="ml-auto text-xs text-muted shrink-0">{j.status === 'running' ? 'running' : j.status === 'failed' ? 'failed' : fmt(j.finishedAt ?? j.startedAt)}</span>
+                  <span className="ml-auto text-xs text-muted shrink-0">
+                    {j.status === 'running' ? 'running' : j.status === 'queued' ? 'queued' : j.status === 'failed' ? 'failed' : fmt(j.finishedAt ?? j.startedAt ?? j.createdAt ?? '')}
+                  </span>
                 </Link>
               </li>
             ))}
