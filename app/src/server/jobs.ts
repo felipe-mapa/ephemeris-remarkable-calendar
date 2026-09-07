@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import { spawn } from 'node:child_process';
 import { paths } from './paths.js';
 
-export type JobKind = 'sync' | 'fetch' | 'generate' | 'remarkable' | 'backup';
+export type JobKind = 'sync' | 'fetch' | 'fetch-year' | 'generate' | 'remarkable' | 'backup';
 export type JobStatus = 'running' | 'succeeded' | 'failed';
 
 export interface JobRecord {
@@ -92,12 +92,12 @@ export class JobRunner extends EventEmitter {
     }
   }
 
-  start(kind: JobKind, work: (ctx: JobContext) => Promise<void>): JobRecord {
+  start(kind: JobKind, work: (ctx: JobContext) => Promise<void>, opts: { id?: string } = {}): JobRecord {
     if (this.current) throw new JobBusyError(this.current);
     if (!this.acquireLock()) throw new JobBusyError(null);
 
     const job: JobRecord = {
-      id: `${Date.now().toString(36)}-${(this.seq++).toString(36)}`,
+      id: opts.id ?? `${Date.now().toString(36)}-${(this.seq++).toString(36)}`,
       kind,
       status: 'running',
       startedAt: new Date().toISOString(),
