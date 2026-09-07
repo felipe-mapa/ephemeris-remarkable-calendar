@@ -1,7 +1,7 @@
 from datetime import datetime, date, time
 from tempfile import NamedTemporaryFile
 import asyncio
-import sqlite3
+import json
 
 import aiohttp
 import requests
@@ -11,7 +11,6 @@ from dateutil import tz as dateutil_tz
 from loguru import logger
 
 import remarkable_calendar.settings as settings
-from remarkable_calendar.calendar_db_sqlite import get_db_path
 
 
 async def download_calendar_async(session: aiohttp.ClientSession, source: str) -> bytes:
@@ -173,75 +172,58 @@ async def _fetch_and_process_http_calendar(session: aiohttp.ClientSession, sourc
     return extract_raw_events(cal, color, name)
 
 
-async def load_events_from_db() -> list[tuple]:
+async def load_events_from_json() -> list[tuple]:
     """
-    Load events from the calendar.db SQLite database and convert them
-    to the same format as load_raw_events (icalendar components).
+    Load the events exported by the web app (app/src/server/pipeline.ts exportEventsJson)
+    and convert them to the same format as load_raw_events (icalendar components).
     Returns list of tuples: (component, color, tz_factory, name).
     """
-    db_path = get_db_path()
-    
-    if not os.path.exists(db_path):
-        logger.warning("Calendar database not found at {}, returning empty event list", db_path)
+    path = settings.EVENTS_JSON
+    if not path.exists():
+        logger.warning("Events file not found at {}, rendering an empty calendar", path)
         return []
-    
-    logger.debug("Loading events from database: {}", db_path)
-    
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        SELECT date, summary, description, location, dtstart, dtend, color, calendar, all_day
-        FROM events
-        WHERE deleted_at IS NULL
-        ORDER BY date, dtstart
-    ''')
-    
+
+    logger.debug("Loading events from {}", path)
+    rows = json.loads(path.read_text())
     all_events = []
-    
-    for row in cursor.fetchall():
-        date_str, summary, description, location, dtstart_str, dtend_str, color, calendar_name, all_day = row
-        
-        # Create an icalendar Event component
+
+    for row in rows:
+        date_str = row.get('date', '')
+        summary = row.get('summary') or ''
+        dtstart_str = row.get('dtstart', '')
+        dtend_str = row.get('dtend', '')
+        all_day = bool(row.get('all_day'))
+
         event = iCalEvent()
-        event.add('summary', summary or '')
-        if description:
-            event.add('description', description)
-        if location:
-            event.add('location', location)
-        
-        # Parse datetime strings
+        event.add('summary', summary)
+        if row.get('description'):
+            event.add('description', row['description'])
+        if row.get('location'):
+            event.add('location', row['location'])
+
         try:
             if all_day:
-                # All-day events stored as dates
                 dtstart = datetime.fromisoformat(dtstart_str).date()
                 dtend = datetime.fromisoformat(dtend_str).date()
             else:
-                # Timed events with timezone
                 dtstart = datetime.fromisoformat(dtstart_str)
                 dtend = datetime.fromisoformat(dtend_str)
-                # Ensure timezone-aware
                 if dtstart.tzinfo is None:
                     dtstart = dtstart.replace(tzinfo=settings.TZ_LOCAL)
                 if dtend.tzinfo is None:
                     dtend = dtend.replace(tzinfo=settings.TZ_LOCAL)
-            
+
             event.add('dtstart', dtstart)
             event.add('dtend', dtend)
-            
-            # Generate a unique UID for the event
+
             uid = f"{date_str}-{summary}-{dtstart_str}".replace(' ', '-').replace(':', '')
             event.add('uid', uid)
-            
         except (ValueError, TypeError) as e:
             logger.warning("Failed to parse datetime for event '{}': {}", summary, e)
             continue
-        
-        # Append as tuple: (component, color, tz_factory, calendar_name)
-        # tz_factory is None since we're using timezone-aware datetimes directly
-        all_events.append((event, color or 'black', None, calendar_name or 'Database'))
-    
-    conn.close()
-    
-    logger.debug("Loaded {} events from database", len(all_events))
+
+        # tz_factory is None because the datetimes are already timezone-aware
+        all_events.append((event, row.get('color') or 'black', None, row.get('calendar') or 'Database'))
+
+    logger.debug("Loaded {} events from JSON", len(all_events))
     return all_events

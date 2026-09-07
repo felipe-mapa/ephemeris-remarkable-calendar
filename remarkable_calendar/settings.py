@@ -57,7 +57,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # File paths
 CONFIG_PATH  = Path(os.getenv("APP_CONFIG_PATH", str(BASE_DIR / "config/config.yaml")))
 META_FILE    = Path(os.getenv("APP_META_FILE_PATH", str(BASE_DIR / "config/feeds_meta.yaml")))
-CALENDAR_DB  = Path(os.getenv("APP_CALENDAR_DB_PATH", str(BASE_DIR / "output/calendar.db")))
+EVENTS_JSON  = Path(os.getenv("APP_EVENTS_JSON_PATH", str(BASE_DIR / "output/events.json")))
 OUTPUT_PDF   = os.getenv("APP_OUTPUT_PDF_PATH", "output/remarkable_calendar.pdf")
 OUTPUT_PNG   = os.getenv("APP_OUTPUT_PNG_DIR", "output/png")
 OUTPUT_PNG_BG   = os.getenv("APP_OUTPUT_BG_PNG_DIR", "output/png_background")

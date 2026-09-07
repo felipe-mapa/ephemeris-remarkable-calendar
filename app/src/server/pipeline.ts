@@ -5,7 +5,7 @@ import { EventStore } from './db.js';
 import { listCalendarSources } from './sources.js';
 import { fetchAllSources } from './ics.js';
 import type { JobContext } from './jobs.js';
-import { paths, pdfPathForYear, RMAPI_IMAGE, TIMEZONE } from './paths.js';
+import { paths, pdfPathForYear, eventsJsonPathForYear, RMAPI_IMAGE, TIMEZONE } from './paths.js';
 
 const today = () => DateTime.now().setZone(TIMEZONE);
 export const currentYear = () => today().year;
@@ -37,19 +37,36 @@ function ensurePython() {
   }
 }
 
+/** Snapshot of the year's active events for the Python renderer (replaces its SQLite read). */
+export async function exportEventsJson(store: EventStore, year: number): Promise<string> {
+  const events = await store.listRange(`${year}-01-01`, `${year}-12-31`);
+  const rows = events.map((e) => ({
+    date: e.date, summary: e.summary, description: e.description, location: e.location,
+    dtstart: e.dtstart, dtend: e.dtend, color: e.color, calendar: e.calendar, all_day: e.allDay,
+  }));
+  const file = eventsJsonPathForYear(year);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(rows));
+  return file;
+}
+
+/** Environment every Python entry point needs to render `year` from the exported JSON. */
+function pythonEnv(year: number, eventsJson: string): NodeJS.ProcessEnv {
+  return {
+    TIME_DATE_RANGE: `${year}-01-01:${year}-12-31`,
+    APP_OUTPUT_PDF_PATH: pdfPathForYear(year),
+    APP_FORCE_REFRESH: 'true',
+    APP_EVENTS_JSON_PATH: eventsJson,
+  };
+}
+
 /** Port of generate_pdf() in remarkable_calendar.sh: render the full-year PDF from the database. */
-export async function generatePdf(ctx: JobContext, year: number = currentYear()): Promise<string> {
+export async function generatePdf(ctx: JobContext, store: EventStore, year: number = currentYear()): Promise<string> {
   ensurePython();
   const out = pdfPathForYear(year);
+  const eventsJson = await exportEventsJson(store, year);
   ctx.log(`🖨️  Generating PDF for ${year}...`);
-  const res = await ctx.run(paths.venvPython, [paths.remarkableCalendarPy], {
-    env: {
-      TIME_DATE_RANGE: `${year}-01-01:${year}-12-31`,
-      APP_OUTPUT_PDF_PATH: out,
-      APP_FORCE_REFRESH: 'true',
-    },
-    timeoutMs: 20 * 60_000,
-  });
+  const res = await ctx.run(paths.venvPython, [paths.remarkableCalendarPy], { env: pythonEnv(year, eventsJson), timeoutMs: 20 * 60_000 });
   if (res.code !== 0) throw new Error(`PDF generation failed (exit ${res.code})`);
   ctx.log(`✅ Wrote ${out}`);
   return out;
@@ -120,21 +137,25 @@ export function listBackups(year: number) {
 }
 
 /** Regenerate the PDF from the DB and merge it with a backup's annotations, then upload (remarkable_calendar_merge_from_backup.py). */
-async function mergeFromBackup(ctx: JobContext, backupPath: string, year: number) {
+async function mergeFromBackup(ctx: JobContext, store: EventStore, backupPath: string, year: number) {
   ensurePython();
+  const eventsJson = await exportEventsJson(store, year);
   ctx.log('🔄 Regenerating calendar and merging annotations...');
-  const res = await ctx.run(paths.venvPython, [paths.mergeFromBackupPy, '--year', String(year), '--backup', backupPath], { timeoutMs: 30 * 60_000 });
+  const res = await ctx.run(paths.venvPython, [paths.mergeFromBackupPy, '--year', String(year), '--backup', backupPath], {
+    env: pythonEnv(year, eventsJson), // merge_from_backup.py copies os.environ into its child remarkable_calendar.py
+    timeoutMs: 30 * 60_000,
+  });
   if (res.code !== 0) throw new Error(`Merge from backup failed (exit ${res.code})`);
   ctx.log('✅ Calendar merged and uploaded');
 }
 
-/** remarkable_calendar.sh upload: generate then upload via remarkable_calendar_merge_annotations.py (which itself tries to preserve device annotations). */
-async function uploadFresh(ctx: JobContext, year: number) {
+/** remarkable_calendar.sh upload: generate then upload via remarkable_calendar_merge_annotations.py. */
+async function uploadFresh(ctx: JobContext, store: EventStore, year: number) {
   ensurePython();
   const pdf = pdfPathForYear(year);
-  if (!fs.existsSync(pdf)) await generatePdf(ctx, year);
+  if (!fs.existsSync(pdf)) await generatePdf(ctx, store, year);
   ctx.log('⚠️  No backup found, uploading fresh calendar...');
-  const res = await ctx.run(paths.venvPython, [paths.mergeAnnotationsPy], { timeoutMs: 30 * 60_000 });
+  const res = await ctx.run(paths.venvPython, [paths.mergeAnnotationsPy], { env: pythonEnv(year, eventsJsonPathForYear(year)), timeoutMs: 30 * 60_000 });
   if (res.code !== 0) throw new Error(`Upload failed (exit ${res.code})`);
   ctx.log('✅ Fresh calendar uploaded');
 }
@@ -156,14 +177,14 @@ export async function updateRemarkable(ctx: JobContext, store: EventStore, opts:
 
   const backup = await backupFromRemarkable(ctx, docNameForYear(year));
   if (backup) {
-    await mergeFromBackup(ctx, backup, year);
+    await mergeFromBackup(ctx, store, backup, year);
   } else {
     const local = latestLocalBackup(year);
     if (local) {
       ctx.log(`⚠️  Live backup unavailable, using local backup: ${path.basename(local)}`);
-      await mergeFromBackup(ctx, local, year);
+      await mergeFromBackup(ctx, store, local, year);
     } else {
-      await uploadFresh(ctx, year);
+      await uploadFresh(ctx, store, year);
     }
   }
   ctx.log('✅ Calendar sync completed');
