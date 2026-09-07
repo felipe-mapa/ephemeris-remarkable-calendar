@@ -1,7 +1,5 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import Database from 'better-sqlite3';
-import { paths } from './paths.js';
+import postgres, { type Sql } from 'postgres';
+import { env } from './env.js';
 
 export type EventSource = 'google' | 'manual';
 
@@ -25,141 +23,125 @@ export type NewEvent = Omit<CalendarEvent, 'id' | 'deletedAt' | 'createdAt'>;
 export type ManualEventInput = Pick<NewEvent, 'date' | 'summary' | 'description' | 'location' | 'dtstart' | 'dtend' | 'allDay'>;
 
 interface Row {
-  id: number; date: string; summary: string | null; description: string | null; location: string | null;
-  dtstart: string; dtend: string; color: string | null; calendar: string | null; all_day: number | null;
-  source: string | null; deleted_at: string | null; created_at: string;
+  id: number; date: string; summary: string; description: string; location: string;
+  dtstart: string; dtend: string; color: string; calendar: string; all_day: boolean;
+  source: string; deleted_at: Date | null; created_at: Date;
 }
-
-const SELECT = `SELECT id, date, summary, description, location, dtstart, dtend, color, calendar, all_day, source, deleted_at, created_at FROM events`;
 
 function rowToEvent(r: Row): CalendarEvent {
   return {
-    id: r.id,
+    id: Number(r.id),
     date: r.date,
-    summary: r.summary ?? '',
-    description: r.description ?? '',
-    location: r.location ?? '',
+    summary: r.summary,
+    description: r.description,
+    location: r.location,
     dtstart: r.dtstart,
     dtend: r.dtend,
-    color: r.color ?? 'black',
-    calendar: r.calendar ?? 'Unknown',
-    allDay: !!r.all_day,
+    color: r.color,
+    calendar: r.calendar,
+    allDay: r.all_day,
     source: r.source === 'manual' ? 'manual' : 'google',
-    deletedAt: r.deleted_at,
-    createdAt: r.created_at,
+    deletedAt: r.deleted_at ? r.deleted_at.toISOString() : null,
+    createdAt: r.created_at.toISOString(),
   };
 }
 
 export const MANUAL_CALENDAR = 'Manual';
 export const MANUAL_COLOR = 'black';
 
+/** postgres.js client. `date` columns come back as 'YYYY-MM-DD' strings, not JS Dates. */
+export function connect(url: string = env.databaseUrl): Sql {
+  return postgres(url, {
+    max: 5,
+    prepare: false, // required by Supabase's transaction pooler; harmless on direct/session connections
+    types: {
+      date: { to: 1082, from: [1082], serialize: (v: string) => v, parse: (v: string) => v },
+    },
+  });
+}
+
+export async function resolveUserId(sql: Sql, email: string): Promise<string> {
+  const rows = await sql<{ id: string }[]>`select id from public.users where email = ${email}`;
+  if (rows.length === 0) throw new Error(`No user with email ${email}. Apply supabase/seed.sql (locally: supabase db reset).`);
+  return rows[0].id;
+}
+
+const CHUNK = 500;
+
 export class EventStore {
-  constructor(public readonly raw: Database.Database) {
-    this.migrate();
+  constructor(public readonly sql: Sql, public readonly userId: string) {}
+
+  static async open(url: string = env.databaseUrl, email: string = env.userEmail): Promise<EventStore> {
+    const sql = connect(url);
+    return new EventStore(sql, await resolveUserId(sql, email));
   }
 
-  static open(file: string = paths.db): EventStore {
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    const db = new Database(file);
-    db.pragma('journal_mode = WAL');
-    return new EventStore(db);
+  private cols() {
+    return this.sql`id::int as id, date, summary, description, location, dtstart, dtend, color, calendar, all_day, source, deleted_at, created_at`;
   }
 
-  private migrate() {
-    this.raw.exec(`
-      CREATE TABLE IF NOT EXISTS events (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        date TEXT NOT NULL,
-        summary TEXT,
-        description TEXT,
-        location TEXT,
-        dtstart TEXT NOT NULL,
-        dtend TEXT NOT NULL,
-        color TEXT,
-        calendar TEXT,
-        all_day INTEGER,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE INDEX IF NOT EXISTS idx_date ON events(date);
-      CREATE INDEX IF NOT EXISTS idx_dtstart ON events(dtstart);
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_event_unique ON events(date, summary, dtstart);
-    `);
-    const cols = new Set((this.raw.prepare(`PRAGMA table_info(events)`).all() as { name: string }[]).map((c) => c.name));
-    if (!cols.has('source')) this.raw.exec(`ALTER TABLE events ADD COLUMN source TEXT NOT NULL DEFAULT 'google'`);
-    if (!cols.has('deleted_at')) this.raw.exec(`ALTER TABLE events ADD COLUMN deleted_at TEXT`);
-  }
-
-  listRange(start: string, end: string, opts: { includeDeleted?: boolean } = {}): CalendarEvent[] {
-    const where = opts.includeDeleted ? '' : ' AND deleted_at IS NULL';
-    const rows = this.raw.prepare(`${SELECT} WHERE date >= ? AND date <= ?${where} ORDER BY date, all_day DESC, dtstart`).all(start, end) as Row[];
+  async listRange(start: string, end: string, opts: { includeDeleted?: boolean } = {}): Promise<CalendarEvent[]> {
+    const rows = await this.sql<Row[]>`
+      select ${this.cols()} from public.events
+      where user_id = ${this.userId} and date >= ${start} and date <= ${end}
+      ${opts.includeDeleted ? this.sql`` : this.sql`and deleted_at is null`}
+      order by date, all_day desc, dtstart`;
     return rows.map(rowToEvent);
   }
 
-  get(id: number): CalendarEvent | undefined {
-    const row = this.raw.prepare(`${SELECT} WHERE id = ?`).get(id) as Row | undefined;
-    return row ? rowToEvent(row) : undefined;
+  async get(id: number): Promise<CalendarEvent | undefined> {
+    const rows = await this.sql<Row[]>`select ${this.cols()} from public.events where id = ${id} and user_id = ${this.userId}`;
+    return rows[0] ? rowToEvent(rows[0]) : undefined;
   }
 
-  addManual(input: ManualEventInput): number {
-    const res = this.raw
-      .prepare(
-        `INSERT INTO events (date, summary, description, location, dtstart, dtend, color, calendar, all_day, source)
-         VALUES (@date, @summary, @description, @location, @dtstart, @dtend, @color, @calendar, @allDay, 'manual')`,
-      )
-      .run({ ...input, allDay: input.allDay ? 1 : 0, color: MANUAL_COLOR, calendar: MANUAL_CALENDAR });
-    return Number(res.lastInsertRowid);
+  async addManual(input: ManualEventInput): Promise<number> {
+    const [row] = await this.sql<{ id: number }[]>`
+      insert into public.events (user_id, date, summary, description, location, dtstart, dtend, color, calendar, all_day, source)
+      values (${this.userId}, ${input.date}, ${input.summary}, ${input.description}, ${input.location}, ${input.dtstart}, ${input.dtend},
+              ${MANUAL_COLOR}, ${MANUAL_CALENDAR}, ${input.allDay}, 'manual')
+      returning id::int as id`;
+    return Number(row.id);
   }
 
-  softDelete(id: number): boolean {
-    return this.raw.prepare(`UPDATE events SET deleted_at = datetime('now') WHERE id = ? AND deleted_at IS NULL`).run(id).changes > 0;
+  async softDelete(id: number): Promise<boolean> {
+    const res = await this.sql`update public.events set deleted_at = now() where id = ${id} and user_id = ${this.userId} and deleted_at is null`;
+    return res.count > 0;
   }
 
-  restore(id: number): boolean {
-    return this.raw.prepare(`UPDATE events SET deleted_at = NULL WHERE id = ? AND deleted_at IS NOT NULL`).run(id).changes > 0;
+  async restore(id: number): Promise<boolean> {
+    const res = await this.sql`update public.events set deleted_at = null where id = ${id} and user_id = ${this.userId} and deleted_at is not null`;
+    return res.count > 0;
   }
 
   /**
-   * Replace non-deleted Google events in [start, end] with a fresh set.
-   * Manual events are untouched. Soft-deleted rows stay put, and because the
-   * unique index is on (date, summary, dtstart), a re-fetched copy of a deleted
-   * event is ignored rather than resurrected. Returns the number inserted.
+   * Replace non-deleted Google events in [start, end] with a fresh set. Manual events are untouched.
+   * Soft-deleted rows stay put and, because of the (user_id, date, summary, dtstart) unique key,
+   * a re-fetched copy of a deleted event is ignored rather than resurrected. Returns the number inserted.
    */
-  replaceGoogleRange(start: string, end: string, events: NewEvent[]): number {
-    const del = this.raw.prepare(`DELETE FROM events WHERE date >= ? AND date <= ? AND source = 'google' AND deleted_at IS NULL`);
-    const ins = this.raw.prepare(
-      `INSERT OR IGNORE INTO events (date, summary, description, location, dtstart, dtend, color, calendar, all_day, source)
-       VALUES (@date, @summary, @description, @location, @dtstart, @dtend, @color, @calendar, @allDay, 'google')`,
-    );
-    const tx = this.raw.transaction((items: NewEvent[]) => {
-      del.run(start, end);
+  async replaceGoogleRange(start: string, end: string, events: NewEvent[]): Promise<number> {
+    return this.sql.begin(async (tx) => {
+      await tx`delete from public.events where user_id = ${this.userId} and date >= ${start} and date <= ${end} and source = 'google' and deleted_at is null`;
       let count = 0;
-      for (const e of items) {
-        count += ins.run({ ...e, allDay: e.allDay ? 1 : 0 }).changes;
+      for (let i = 0; i < events.length; i += CHUNK) {
+        const rows = events.slice(i, i + CHUNK).map((e) => ({
+          user_id: this.userId, date: e.date, summary: e.summary, description: e.description, location: e.location,
+          dtstart: e.dtstart, dtend: e.dtend, color: e.color, calendar: e.calendar, all_day: e.allDay, source: 'google',
+        }));
+        const res = await tx`insert into public.events ${tx(rows)} on conflict (user_id, date, summary, dtstart) do nothing`;
+        count += res.count;
       }
       return count;
     });
-    return tx(events);
   }
 
-  stats(): { totalEvents: number; totalDates: number; minDate: string | null; maxDate: string | null } {
-    const r = this.raw
-      .prepare(`SELECT COUNT(*) AS total, COUNT(DISTINCT date) AS dates, MIN(date) AS minDate, MAX(date) AS maxDate FROM events WHERE deleted_at IS NULL`)
-      .get() as { total: number; dates: number; minDate: string | null; maxDate: string | null };
-    return { totalEvents: r.total, totalDates: r.dates, minDate: r.minDate, maxDate: r.maxDate };
+  async stats(): Promise<{ totalEvents: number; totalDates: number; minDate: string | null; maxDate: string | null }> {
+    const [r] = await this.sql<{ total: number; dates: number; min_date: string | null; max_date: string | null }[]>`
+      select count(*)::int as total, count(distinct date)::int as dates, min(date)::text as min_date, max(date)::text as max_date
+      from public.events where user_id = ${this.userId} and deleted_at is null`;
+    return { totalEvents: r.total, totalDates: r.dates, minDate: r.min_date, maxDate: r.max_date };
   }
 
-  /** Timestamped copy of the DB file, mirroring calendar_db_sqlite.backup_db. */
-  async backupFile(dir: string = paths.dbBackups): Promise<string | null> {
-    const file = (this.raw as unknown as { name: string }).name;
-    if (!file || file === ':memory:' || !fs.existsSync(file)) return null;
-    fs.mkdirSync(dir, { recursive: true });
-    const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15).replace(/(\d{8})(\d{6})/, '$1_$2');
-    const dest = path.join(dir, `calendar_${stamp}.db`);
-    await this.raw.backup(dest);
-    return dest;
-  }
-
-  close() {
-    this.raw.close();
+  async close(): Promise<void> {
+    await this.sql.end({ timeout: 5 });
   }
 }
