@@ -14,7 +14,7 @@ import remarkable_calendar.settings as settings
 from remarkable_calendar.fonts import init_fonts
 from remarkable_calendar.config import load_config
 from remarkable_calendar.meta import load_meta, save_meta
-from remarkable_calendar.calendar_loader import load_raw_events, load_events_from_json
+from remarkable_calendar.calendar_loader import load_events_from_json
 from remarkable_calendar.event_processing import (
     expand_event_for_day,
     split_all_day_events,

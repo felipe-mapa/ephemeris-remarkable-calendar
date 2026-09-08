@@ -14,7 +14,7 @@ export interface FetchOptions {
 export async function readIcs(source: string): Promise<string> {
   if (/^https?:\/\//.test(source)) {
     const res = await fetch(source, { signal: AbortSignal.timeout(30_000) });
-    if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${source.slice(0, 60)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status} fetching calendar source`);
     return res.text();
   }
   return fs.readFile(source, 'utf8');
@@ -133,7 +133,7 @@ export async function fetchAllSources(
   const events: NewEvent[] = [];
   const failures: string[] = [];
   for (const src of sources) {
-    log(`Fetching ${src.name} from ${src.source.slice(0, 50)}...`);
+    log(`Fetching ${src.name}...`);
     try {
       const text = await readIcs(src.source);
       const found = expandIcs(text, start, end, src, zone);

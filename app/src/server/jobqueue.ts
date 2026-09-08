@@ -1,6 +1,6 @@
 import type { Sql } from 'postgres';
 import type { EventStore } from './db.js';
-import { JobRunner, type JobContext, type JobKind } from './jobs.js';
+import { JobRunner, JobBusyError, type JobContext, type JobKind } from './jobs.js';
 import * as pipeline from './pipeline.js';
 
 export type QueuedStatus = 'queued' | 'running' | 'succeeded' | 'failed';
@@ -143,7 +143,14 @@ export function startWorker(opts: { sql: Sql; store: EventStore; jobs: JobRunner
       await chain;
       await finishJob(sql, row.id, done.status === 'succeeded' ? 'succeeded' : 'failed', done.error);
     } catch (err) {
-      await finishJob(sql, row.id, 'failed', err instanceof Error ? err.message : String(err));
+      if (err instanceof JobBusyError) {
+        // Another process (e.g. a manual CLI sync) holds the lock file, not this worker's own
+        // JobRunner (jobs.running is checked above). Release the row back to 'queued' so the
+        // next tick retries it, instead of permanently failing a job that never actually ran.
+        await sql`update public.jobs set status = 'queued', started_at = null where id = ${row.id}`;
+      } else {
+        await finishJob(sql, row.id, 'failed', err instanceof Error ? err.message : String(err));
+      }
     } finally {
       jobs.off('line', onLine);
     }
