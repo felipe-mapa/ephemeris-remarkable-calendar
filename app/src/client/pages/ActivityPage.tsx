@@ -25,7 +25,7 @@ function JobLog({ jobId }: { jobId: string }) {
     bottom.current?.scrollIntoView({ block: 'end' });
   }, [lines]);
   return (
-    <div className="border border-ink bg-paper-raised h-full overflow-y-auto">
+    <div className="rounded-lg border border-rule bg-paper-raised shadow-(--shadow-panel) h-full overflow-y-auto">
       <pre className="p-4 text-xs leading-relaxed whitespace-pre-wrap break-words font-mono">
         {lines.length === 0 ? (status ? 'No output.' : 'Waiting for output…') : lines.join('\n')}
         <div ref={bottom} />
@@ -49,7 +49,7 @@ export default function ActivityPage() {
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] min-h-[560px]">
-      <aside className="w-[360px] shrink-0 border-r border-ink flex flex-col min-h-0">
+      <aside className="w-[360px] shrink-0 bg-paper-raised shadow-(--shadow-panel-right) flex flex-col min-h-0 relative z-0">
         <div className="px-5 pt-5 pb-4 border-b border-rule">
           <h1 className="text-base font-semibold">More actions</h1>
           <p className="text-xs text-muted mt-1">Each step of the daily sync, on its own.</p>
@@ -76,8 +76,9 @@ export default function ActivityPage() {
               <li key={j.id}>
                 <Link
                   to={`/activity/${j.id}`}
-                  className={`flex items-center gap-3 px-5 py-2.5 text-sm border-b border-rule-soft ${j.id === activeId ? 'bg-marker/60' : 'hover:bg-paper-raised'}`}
+                  className={`relative flex items-center gap-3 px-5 py-2.5 text-sm border-b border-rule-soft transition-colors ${j.id === activeId ? 'bg-marker/30' : 'hover:bg-paper'}`}
                 >
+                  {j.id === activeId && <span className="absolute inset-y-0 left-0 w-0.5 bg-marker-deep" aria-hidden />}
                   <span
                     className={`w-2 h-2 rounded-full shrink-0 ${j.status === 'running' ? 'bg-ink animate-pulse' : j.status === 'failed' ? 'bg-ink' : 'border border-ink'}`}
                     aria-hidden

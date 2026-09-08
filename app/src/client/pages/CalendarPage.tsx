@@ -52,24 +52,58 @@ export default function CalendarPage() {
     setEvents((prev) => (prev.some((e) => e.id === ev.id) ? prev.map((e) => (e.id === ev.id ? ev : e)) : [...prev, ev]));
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] min-h-[560px]">
-      <section className="flex-1 min-w-0 flex flex-col">
-        <div className="flex items-baseline gap-3 px-6 h-14 shrink-0">
-          <h1 className="text-2xl font-semibold tracking-tight">{MONTHS[month - 1]} <span className="text-muted font-normal">{year}</span></h1>
-          <div className="ml-auto flex items-center gap-1">
-            <button className="btn btn-quiet px-2" onClick={() => go(year, month - 1)} aria-label="Previous month">‹</button>
-            <button className="btn btn-quiet" onClick={() => select(todayIso)}>Today</button>
-            <button className="btn btn-quiet px-2" onClick={() => go(year, month + 1)} aria-label="Next month">›</button>
-          </div>
-        </div>
-        {loadError && <p className="px-6 pb-2 text-sm">Could not load events: {loadError}. Is the server running on port 3210?</p>}
-        <div className="flex-1 min-h-0 px-6 pb-6">
-          <div className="h-full border border-ink">
-            <MonthGrid year={year} month={month} today={todayIso} selected={selected} eventsByDate={byDate} onSelect={select} />
-          </div>
-        </div>
-      </section>
-      <DayPanel date={selected} events={byDate.get(selected) ?? []} onChange={upsert} />
-    </div>
+      <div className='flex h-[calc(100vh-3.5rem)] min-h-[560px]'>
+          <section className='flex-1 min-w-0 flex flex-col'>
+              <div className='flex items-baseline gap-3 py-4 px-6 shrink-0'>
+                  <h1 className='text-2xl font-semibold tracking-tight'>
+                      {MONTHS[month - 1]}{" "}
+                      <span className='text-muted font-normal'>{year}</span>
+                  </h1>
+                  <div className='ml-auto flex items-center gap-1'>
+                      <button
+                          className='btn btn-quiet px-2 text-base'
+                          onClick={() => go(year, month - 1)}
+                          aria-label='Previous month'
+                      >
+                          ‹
+                      </button>
+                      <button
+                          className='btn btn-quiet'
+                          onClick={() => select(todayIso)}
+                      >
+                          Today
+                      </button>
+                      <button
+                          className='btn btn-quiet px-2 text-base'
+                          onClick={() => go(year, month + 1)}
+                          aria-label='Next month'
+                      >
+                          ›
+                      </button>
+                  </div>
+              </div>
+              {loadError && (
+                  <p className='px-6 pb-2 text-sm'>
+                      Could not load events: {loadError}. Is the server running
+                      on port 3210?
+                  </p>
+              )}
+              <div className='flex-1 min-h-0 px-6 pb-6'>
+                  <MonthGrid
+                      year={year}
+                      month={month}
+                      today={todayIso}
+                      selected={selected}
+                      eventsByDate={byDate}
+                      onSelect={select}
+                  />
+              </div>
+          </section>
+          <DayPanel
+              date={selected}
+              events={byDate.get(selected) ?? []}
+              onChange={upsert}
+          />
+      </div>
   );
 }

@@ -28,10 +28,10 @@ export function monthCells(year: number, month: number): { date: string; inMonth
 export default function MonthGrid({ year, month, today, selected, eventsByDate, onSelect }: Props) {
   const cells = monthCells(year, month);
   return (
-    <div className="flex flex-col h-full">
-      <div className="grid grid-cols-7 border-b border-ink">
+    <div className="flex flex-col h-full rounded-lg overflow-hidden border border-rule bg-paper-raised shadow-(--shadow-panel)">
+      <div className="grid grid-cols-7 border-b border-rule">
         {WEEKDAYS.map((w) => (
-          <div key={w} className="px-2 py-1.5 text-xs text-muted">{w}</div>
+          <div key={w} className="px-2 py-1.5 text-xs font-medium text-muted">{w}</div>
         ))}
       </div>
       <div className="grid grid-cols-7 grid-rows-6 flex-1 min-h-0">
@@ -47,13 +47,14 @@ export default function MonthGrid({ year, month, today, selected, eventsByDate, 
               aria-label={date}
               aria-pressed={isSel}
               className={[
-                'text-left flex flex-col min-h-0 p-1.5 border-rule-soft border-b transition-colors',
+                'relative text-left flex flex-col min-h-0 p-1.5 border-rule-soft border-b transition-colors',
                 i % 7 !== 6 ? 'border-r' : '',
-                isSel ? 'bg-marker/70' : 'hover:bg-paper-raised',
+                isSel ? 'bg-marker/40' : 'hover:bg-paper',
                 inMonth ? '' : 'text-muted/70',
               ].join(' ')}
             >
-              <span className={`self-start text-xs leading-none px-1 py-0.5 rounded-sm ${isToday ? 'bg-ink text-paper-raised font-semibold' : ''}`}>
+              {isSel && <span className="absolute inset-y-0 left-0 w-0.5 bg-marker-deep" aria-hidden />}
+              <span className={`self-start text-xs leading-none px-1.5 py-1 rounded-md ${isToday ? 'bg-ink text-paper-raised font-semibold' : ''}`}>
                 {Number(date.slice(-2))}
               </span>
               <ul className="mt-1 flex flex-col gap-0.5 min-h-0 overflow-hidden">

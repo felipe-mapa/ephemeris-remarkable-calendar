@@ -23,7 +23,7 @@ function EventRow({ ev, onChange }: { ev: CalendarEvent; onChange: (e: CalendarE
     }
   }
   return (
-    <li className={`flex gap-3 py-2.5 border-b border-rule-soft ${deleted ? 'opacity-50' : ''}`}>
+    <li className={`group flex gap-3 py-2.5 px-2 -mx-2 rounded-md border-b border-rule-soft last:border-b-0 hover:bg-paper transition-colors ${deleted ? 'opacity-50' : ''}`}>
       <span className="mt-1.5 w-2 h-2 rounded-full shrink-0" style={{ background: paletteColor(ev.color) }} aria-hidden />
       <div className="min-w-0 flex-1">
         <div className={`text-sm font-medium leading-snug ${deleted ? 'line-through' : ''}`}>{ev.summary || '(untitled)'}</div>
@@ -36,7 +36,7 @@ function EventRow({ ev, onChange }: { ev: CalendarEvent; onChange: (e: CalendarE
         {ev.description && !deleted && <p className="text-xs text-ink-soft mt-1 whitespace-pre-wrap line-clamp-3">{plainText(ev.description)}</p>}
         {deleted && <div className="text-xs text-muted mt-0.5">Removed. It stays out of the PDF and won't come back on sync.</div>}
       </div>
-      <button className="btn btn-quiet h-7 px-2 text-xs self-start" disabled={busy} onClick={toggle}>
+      <button className="btn btn-quiet h-7 px-2 text-xs self-start opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity" disabled={busy} onClick={toggle}>
         {deleted ? 'Restore' : 'Remove'}
       </button>
     </li>
@@ -50,7 +50,7 @@ export default function DayPanel({ date, events, onChange }: Props) {
   const deleted = events.filter((e) => e.deletedAt !== null);
 
   return (
-    <aside className="w-[360px] shrink-0 border-l border-ink flex flex-col min-h-0">
+    <aside className="w-[360px] shrink-0 bg-paper-raised shadow-(--shadow-panel-left) flex flex-col min-h-0 relative z-0">
       <div className="px-5 pt-5 pb-3">
         <h2 className="text-base font-semibold leading-tight">{longDate(date)}</h2>
         <p className="text-xs text-muted mt-1">
@@ -58,7 +58,7 @@ export default function DayPanel({ date, events, onChange }: Props) {
           {deleted.length > 0 && (
             <>
               {' · '}
-              <button className="underline" onClick={() => setShowDeleted((s) => !s)}>
+              <button className="underline decoration-rule underline-offset-2 hover:decoration-ink hover:text-ink transition-colors" onClick={() => setShowDeleted((s) => !s)}>
                 {showDeleted ? 'hide' : 'show'} {deleted.length} removed
               </button>
             </>

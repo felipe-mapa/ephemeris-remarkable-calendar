@@ -6,12 +6,12 @@ function Header() {
   const { running, lastLine, error, start, dismissError } = useJobs();
   const busy = running !== null;
   return (
-    <header className="border-b border-ink">
+    <header className="relative z-10 bg-paper-raised shadow-(--shadow-panel)">
       <div className="flex items-center gap-6 px-6 h-14">
         <Link to="/" className="text-lg font-semibold tracking-tight">reMarkableCalendar</Link>
         <nav className="flex items-center gap-1 text-sm">
-          <NavLink to="/" className={({ isActive }) => `px-2 py-1 rounded-sm ${isActive ? 'bg-rule-soft' : 'text-muted hover:text-ink'}`}>Calendar</NavLink>
-          <NavLink to="/activity" className={({ isActive }) => `px-2 py-1 rounded-sm ${isActive ? 'bg-rule-soft' : 'text-muted hover:text-ink'}`}>Activity</NavLink>
+          <NavLink to="/" className={({ isActive }) => `px-2.5 py-1 rounded-md transition-colors ${isActive ? 'bg-ink text-paper-raised font-medium' : 'text-muted hover:bg-rule-soft hover:text-ink'}`}>Calendar</NavLink>
+          <NavLink to="/activity" className={({ isActive }) => `px-2.5 py-1 rounded-md transition-colors ${isActive ? 'bg-ink text-paper-raised font-medium' : 'text-muted hover:bg-rule-soft hover:text-ink'}`}>Activity</NavLink>
         </nav>
         <div className="ml-auto flex items-center gap-2">
           <button className="btn" disabled={busy} onClick={() => start('fetch', { days: 30 })} title="Fetch the next 30 days from your calendar feeds into the database">
@@ -23,7 +23,7 @@ function Header() {
         </div>
       </div>
       {busy && (
-        <Link to={`/activity/${running.id}`} className="flex items-center gap-3 px-6 h-8 text-xs bg-marker text-ink border-t border-marker-deep">
+        <Link to={`/activity/${running.id}`} className="flex items-center gap-3 px-6 h-8 text-xs bg-marker text-ink border-t border-marker-deep/60 hover:bg-marker/90 transition-colors">
           <span className="inline-block w-2 h-2 rounded-full bg-ink animate-pulse" aria-hidden />
           <span className="font-medium shrink-0">{running.status === 'queued' ? 'Queued: ' : ''}{JOB_LABELS[running.kind]}</span>
           <span className="truncate text-ink-soft">{lastLine || 'Starting…'}</span>

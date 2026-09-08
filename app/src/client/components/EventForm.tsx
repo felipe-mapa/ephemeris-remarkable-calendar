@@ -35,7 +35,7 @@ export default function EventForm({ date, onCreated, onCancel }: Props) {
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3 border border-rule rounded-sm p-3 bg-paper-raised/60">
+    <form onSubmit={submit} className="flex flex-col gap-3 border border-rule rounded-lg p-4 bg-paper shadow-(--shadow-panel)">
       <input className="field" placeholder="Title" value={summary} onChange={(e) => setSummary(e.target.value)} autoFocus required />
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} className="accent-ink" />
