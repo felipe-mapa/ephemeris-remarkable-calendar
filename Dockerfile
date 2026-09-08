@@ -16,16 +16,21 @@ COPY remarkable_calendar.py .
 
 CMD ["python", "remarkable_calendar.py"]
 
-# Build rmapi from source with the docSchema header fix (ddvk/rmapi PRs #63 + #65).
-# The fix is needed because reMarkable's API started requiring file extensions
-# on rm-filename headers (~2026-05-18), which broke all released rmapi versions.
+# Build rmapi from source at current master.
+#
+# Historically this build checked out ddvk/rmapi PR #65 (a since-abandoned, never-rebased
+# branch that added an ensureExtension() fix for the rm-filename header reMarkable started
+# requiring around 2026-05-18). By 2026-09 that branch was 26 commits behind master and
+# missing master's own schema-v4 upload support (PR #36, merged 2025-11-22) entirely, which
+# made downloads work (master's `root.docSchema` handling covers PR #65's fix a different
+# way) but broke uploads outright (HTTP 400 on every `rmapi put`) because schema v4 hashing
+# was simply absent from the pr65 checkout. Building plain master gets both fixes together;
+# if `rmapi put`/`get` regress again, re-check whether master's default branch changed name
+# or whether a new upstream fix needs pinning here (see ddvk/rmapi issues for "400").
 FROM golang:1.23-alpine AS rmapi-builder
 RUN apk add --no-cache git
 RUN git clone https://github.com/ddvk/rmapi.git /rmapi
 WORKDIR /rmapi
-# Apply PR #65: ensureExtension() in blobstorage.go adds .docSchema to bare filenames,
-# fixing the HTTP 400 reMarkable started returning for rm-filename headers without extension.
-RUN git fetch origin refs/pull/65/head:pr65 && git checkout pr65
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /rmapi-bin .
 
 # reMarkableCalendar with patched rmapi
