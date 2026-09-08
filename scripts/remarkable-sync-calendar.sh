@@ -11,6 +11,6 @@ if (cd "$APP_DIR" && npm run --silent cli -- sync "$@"); then
     osascript -e 'display notification "✅ Calendar synced to reMarkable" with title "Remarkable Sync Calendar" subtitle "Calendar updated with annotations preserved"' 2>/dev/null || true
     exit 0
 else
-    osascript -e 'display notification "❌ Calendar sync failed" with title "Remarkable Sync Calendar Error" subtitle "See logs/remarkable-sync.log"' 2>/dev/null || true
+    osascript -e 'display notification "❌ Calendar sync failed" with title "Remarkable Sync Calendar Error" subtitle "Run: npm run cli -- jobs"' 2>/dev/null || true
     exit 1
 fi

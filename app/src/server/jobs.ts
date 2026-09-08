@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import { spawn } from 'node:child_process';
 import { paths } from './paths.js';
 
-export type JobKind = 'sync' | 'fetch' | 'generate' | 'remarkable' | 'backup';
+export type JobKind = 'sync' | 'fetch' | 'fetch-year' | 'generate' | 'remarkable' | 'backup';
 export type JobStatus = 'running' | 'succeeded' | 'failed';
 
 export interface JobRecord {
@@ -21,22 +21,6 @@ export interface JobContext {
   run: (cmd: string, args: string[], opts?: { env?: NodeJS.ProcessEnv; cwd?: string; timeoutMs?: number }) => Promise<{ code: number; stdout: string; stderr: string }>;
 }
 
-function stamp() {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
-}
-
-/** Append to logs/remarkable-sync.log in the same format as scripts/helpers/functions.sh. */
-export function appendSyncLog(line: string, file: string = paths.syncLog) {
-  try {
-    fs.mkdirSync(paths.logs, { recursive: true });
-    fs.appendFileSync(file, `[${stamp()}] ${line}\n`);
-  } catch {
-    /* logging must never break a job */
-  }
-}
-
 /**
  * In-memory registry of jobs. Only one job runs at a time; this replaces the
  * PID lock file in remarkable-sync-calendar.sh (the lock file is still written
@@ -47,7 +31,7 @@ export class JobRunner extends EventEmitter {
   private current: JobRecord | null = null;
   private seq = 0;
 
-  constructor(private readonly persistLog: (line: string) => void = appendSyncLog) {
+  constructor(private readonly persistLog: (line: string) => void = () => {}) {
     super();
   }
 
@@ -92,12 +76,12 @@ export class JobRunner extends EventEmitter {
     }
   }
 
-  start(kind: JobKind, work: (ctx: JobContext) => Promise<void>): JobRecord {
+  start(kind: JobKind, work: (ctx: JobContext) => Promise<void>, opts: { id?: string } = {}): JobRecord {
     if (this.current) throw new JobBusyError(this.current);
     if (!this.acquireLock()) throw new JobBusyError(null);
 
     const job: JobRecord = {
-      id: `${Date.now().toString(36)}-${(this.seq++).toString(36)}`,
+      id: opts.id ?? `${Date.now().toString(36)}-${(this.seq++).toString(36)}`,
       kind,
       status: 'running',
       startedAt: new Date().toISOString(),

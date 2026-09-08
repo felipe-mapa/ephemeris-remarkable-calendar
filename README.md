@@ -216,7 +216,7 @@ This will:
 - Run once daily at your chosen time
 - Generate and upload the next 7 days of calendar with annotation preservation
 - Show notification when complete
-- Log all activity to `logs/remarkable-sync.log`
+- Log all activity to the database (`npm run cli -- jobs`)
 
 ### Alternative: Calendar Alarm
 
@@ -298,7 +298,7 @@ The `events` table has two extra columns managed by the web app: `source` (`goog
 - **Automation not running**:
     - **Shortcuts**: Check Automation tab → Verify automation is enabled and "Ask Before Running" is disabled
     - **Calendar Alarm**: Ensure Calendar has permission to run applications in System Settings → Privacy & Security → Automation
-    - Check logs: `tail -f logs/remarkable-sync.log`
+    - Check logs: `npm run cli -- jobs` (list recent runs) or `npm run cli -- jobs <id>` (full log of one run)
 - **Multiple daily runs**:
     - Check marker file: `ls -la logs/remarkable_calendar_run_$(date +%Y-%m-%d)`
     - Manually delete marker file to force run: `rm logs/remarkable_calendar_run_$(date +%Y-%m-%d)`

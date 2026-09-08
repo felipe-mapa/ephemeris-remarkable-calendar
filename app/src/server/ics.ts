@@ -3,7 +3,7 @@ import ICAL from 'ical.js';
 import { DateTime } from 'luxon';
 import type { NewEvent } from './db.js';
 import { TIMEZONE } from './paths.js';
-import type { CalendarSource } from './config.js';
+import type { CalendarSource } from './sources.js';
 
 export interface FetchOptions {
   timezone?: string;
@@ -14,7 +14,7 @@ export interface FetchOptions {
 export async function readIcs(source: string): Promise<string> {
   if (/^https?:\/\//.test(source)) {
     const res = await fetch(source, { signal: AbortSignal.timeout(30_000) });
-    if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${source.slice(0, 60)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status} fetching calendar source`);
     return res.text();
   }
   return fs.readFile(source, 'utf8');
@@ -40,7 +40,7 @@ const iso = (d: DateTime) => d.toISO({ suppressMilliseconds: true }) as string;
 
 /**
  * Expand every VEVENT in an ICS document into per-occurrence rows for [start, end] (inclusive, YYYY-MM-DD).
- * Mirrors remarkable_calendar/event_fetcher.py: one row per occurrence, keyed by the local date of its start.
+ * Mirrors the former remarkable_calendar/event_fetcher.py: one row per occurrence, keyed by the local date of its start.
  */
 export function expandIcs(
   icsText: string,
@@ -133,7 +133,7 @@ export async function fetchAllSources(
   const events: NewEvent[] = [];
   const failures: string[] = [];
   for (const src of sources) {
-    log(`Fetching ${src.name} from ${src.source.slice(0, 50)}...`);
+    log(`Fetching ${src.name}...`);
     try {
       const text = await readIcs(src.source);
       const found = expandIcs(text, start, end, src, zone);

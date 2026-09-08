@@ -10,11 +10,8 @@ export const paths = {
   config: path.join(PROJECT_ROOT, 'config', 'config.yaml'),
   rmapiConfig: path.join(PROJECT_ROOT, 'config', '.rmapi'),
   output: path.join(PROJECT_ROOT, 'output'),
-  db: process.env.APP_CALENDAR_DB_PATH ?? path.join(PROJECT_ROOT, 'output', 'calendar.db'),
   backups: path.join(PROJECT_ROOT, 'backups'),
-  dbBackups: path.join(PROJECT_ROOT, 'backups', 'db'),
   logs: path.join(PROJECT_ROOT, 'logs'),
-  syncLog: path.join(PROJECT_ROOT, 'logs', 'remarkable-sync.log'),
   lockFile: path.join(PROJECT_ROOT, 'logs', 'remarkable_calendar_sync.lock'),
   venvPython: path.join(PROJECT_ROOT, 'venv', 'bin', 'python3'),
   remarkableCalendarPy: path.join(PROJECT_ROOT, 'remarkable_calendar.py'),
@@ -26,3 +23,4 @@ export const paths = {
 export const TIMEZONE = process.env.TZ ?? process.env.TIME_ZONE ?? 'Pacific/Auckland';
 export const RMAPI_IMAGE = process.env.RMAPI_IMAGE ?? 'remarkable-calendar-rmapi:latest';
 export const pdfPathForYear = (year: number) => path.join(paths.output, `calendar_${year}.pdf`);
+export const eventsJsonPathForYear = (year: number) => path.join(paths.output, `events_${year}.json`);

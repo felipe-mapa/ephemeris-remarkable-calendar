@@ -3,7 +3,8 @@ import { streamSSE } from 'hono/streaming';
 import { DateTime } from 'luxon';
 import { EventStore, type ManualEventInput } from './db.js';
 import { JobBusyError, JobRunner, type JobKind } from './jobs.js';
-import { loadCalendarSources } from './config.js';
+import { listCalendarSources } from './sources.js';
+import { activeJob, enqueue, getJob, listJobs } from './jobqueue.js';
 import * as pipeline from './pipeline.js';
 import { TIMEZONE } from './paths.js';
 
@@ -78,24 +79,24 @@ export function createApp({ store, jobs }: AppDeps) {
     return c.json({ error: err.message }, 500);
   });
 
-  api.get('/status', (c) =>
+  api.get('/status', async (c) =>
     c.json({
       timezone: TIMEZONE,
       today: DateTime.now().setZone(TIMEZONE).toISODate(),
-      stats: store.stats(),
-      calendars: loadCalendarSources().map((s) => ({ name: s.name, color: s.color })),
-      running: jobs.running,
+      stats: await store.stats(),
+      calendars: (await listCalendarSources(store.sql, store.userId)).map((s) => ({ name: s.name, color: s.color })),
+      running: jobs.running ?? (await activeJob(store.sql, store.userId)),
       backups: pipeline.listBackups(pipeline.currentYear()),
     }),
   );
 
   // ---- events ----
-  api.get('/events', (c) => {
+  api.get('/events', async (c) => {
     const start = c.req.query('start');
     const end = c.req.query('end');
     if (!start || !end || !DATE_RE.test(start) || !DATE_RE.test(end)) return c.json({ error: 'start and end (YYYY-MM-DD) are required' }, 400);
     const includeDeleted = c.req.query('includeDeleted') === 'true';
-    return c.json({ events: store.listRange(start, end, { includeDeleted }) });
+    return c.json({ events: await store.listRange(start, end, { includeDeleted }) });
   });
 
   api.post('/events', async (c) => {
@@ -105,73 +106,77 @@ export function createApp({ store, jobs }: AppDeps) {
     } catch (e) {
       return c.json({ error: (e as Error).message }, 400);
     }
-    const id = store.addManual(input);
-    return c.json({ event: store.get(id) }, 201);
+    const id = await store.addManual(input);
+    return c.json({ event: await store.get(id) }, 201);
   });
 
-  api.delete('/events/:id', (c) => {
+  api.delete('/events/:id', async (c) => {
     const id = Number(c.req.param('id'));
-    if (!store.get(id)) return c.json({ error: 'Not found' }, 404);
-    store.softDelete(id);
-    return c.json({ event: store.get(id) });
+    if (!(await store.get(id))) return c.json({ error: 'Not found' }, 404);
+    await store.softDelete(id);
+    return c.json({ event: await store.get(id) });
   });
 
-  api.post('/events/:id/restore', (c) => {
+  api.post('/events/:id/restore', async (c) => {
     const id = Number(c.req.param('id'));
-    if (!store.get(id)) return c.json({ error: 'Not found' }, 404);
-    store.restore(id);
-    return c.json({ event: store.get(id) });
+    if (!(await store.get(id))) return c.json({ error: 'Not found' }, 404);
+    await store.restore(id);
+    return c.json({ event: await store.get(id) });
   });
 
-  // ---- jobs ----
-  const startJob = (kind: JobKind, work: Parameters<JobRunner['start']>[1]) => jobs.start(kind, work);
+  // ---- jobs: every request becomes a row in public.jobs; the worker loop picks it up ----
+  const sql = store.sql;
+  const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
 
-  api.get('/jobs', (c) => c.json({ jobs: jobs.list().map(({ lines, ...j }) => ({ ...j, lineCount: lines.length })) }));
-  api.get('/jobs/:id', (c) => {
-    const job = jobs.get(c.req.param('id'));
-    return job ? c.json({ job }) : c.json({ error: 'Not found' }, 404);
+  api.get('/jobs', async (c) => c.json({ jobs: (await listJobs(sql, store.userId)).map(({ log, ...j }) => ({ ...j, lineCount: log ? log.split('\n').length - 1 : 0 })) }));
+  api.get('/jobs/:id', async (c) => {
+    const id = c.req.param('id');
+    const row = await getJob(sql, id);
+    if (!row) return c.json({ error: 'Not found' }, 404);
+    const mem = jobs.get(id);
+    const { log, ...rest } = row;
+    return c.json({ job: { ...rest, lines: mem ? mem.lines : log.split('\n').filter(Boolean) } });
   });
 
-  api.post('/jobs/fetch', async (c) => {
-    const body = (await c.req.json().catch(() => ({}))) as { days?: number };
-    const days = Math.min(Math.max(Number(body.days ?? 30), 1), 400);
-    const job = startJob('fetch', (ctx) => pipeline.fetchEvents(ctx, store, days).then(() => undefined));
-    return c.json({ job }, 202);
-  });
-  api.post('/jobs/fetch-year', async (c) => {
-    const body = (await c.req.json().catch(() => ({}))) as { year?: number };
-    const year = Number(body.year ?? pipeline.currentYear());
-    const job = startJob('fetch', (ctx) => pipeline.fetchEventsRange(ctx, store, `${year}-01-01`, `${year}-12-31`).then(() => undefined));
-    return c.json({ job }, 202);
-  });
-  api.post('/jobs/generate', async (c) => {
-    const body = (await c.req.json().catch(() => ({}))) as { year?: number };
-    const job = startJob('generate', (ctx) => pipeline.generatePdf(ctx, Number(body.year ?? pipeline.currentYear())).then(() => undefined));
-    return c.json({ job }, 202);
-  });
-  api.post('/jobs/remarkable', async (c) => {
-    const body = (await c.req.json().catch(() => ({}))) as { skipFetch?: boolean; days?: number };
-    const job = startJob('remarkable', (ctx) => pipeline.updateRemarkable(ctx, store, { skipFetch: body.skipFetch ?? true, days: body.days }));
-    return c.json({ job }, 202);
-  });
-  api.post('/jobs/sync', async (c) => {
-    const body = (await c.req.json().catch(() => ({}))) as { days?: number };
-    const job = startJob('sync', (ctx) => pipeline.updateRemarkable(ctx, store, { skipFetch: false, days: body.days ?? 7 }));
-    return c.json({ job }, 202);
-  });
-  api.post('/jobs/backup', (c) => {
-    const job = startJob('backup', async (ctx) => {
-      const file = await pipeline.backupFromRemarkable(ctx, pipeline.docNameForYear(pipeline.currentYear()));
-      if (!file) throw new Error('Backup failed: document not downloaded');
+  const queueRoute = (route: string, kind: JobKind, payloadFrom: (body: Record<string, unknown>) => Record<string, unknown>) =>
+    api.post(`/jobs/${route}`, async (c) => {
+      const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+      const job = await enqueue(sql, store.userId, kind, payloadFrom(body), 'web');
+      return c.json({ job }, 202);
     });
-    return c.json({ job }, 202);
-  });
 
-  // Live log stream for one job. Sends the backlog first, then new lines, then a "done" event.
-  api.get('/jobs/:id/stream', (c) => {
-    const job = jobs.get(c.req.param('id'));
-    if (!job) return c.json({ error: 'Not found' }, 404);
+  queueRoute('fetch', 'fetch', (b) => ({ days: Math.min(Math.max(num(b.days) ?? 30, 1), 400) }));
+  queueRoute('fetch-year', 'fetch-year', (b) => ({ year: num(b.year) ?? pipeline.currentYear() }));
+  queueRoute('generate', 'generate', (b) => ({ year: num(b.year) ?? pipeline.currentYear() }));
+  queueRoute('remarkable', 'remarkable', (b) => ({ skipFetch: b.skipFetch ?? true, days: num(b.days) ?? 7 }));
+  queueRoute('sync', 'sync', (b) => ({ days: num(b.days) ?? 7 }));
+  queueRoute('backup', 'backup', () => ({}));
+
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  // Live log stream for one job: waits while queued, follows the in-memory runner while running,
+  // and replays the persisted log once finished.
+  api.get('/jobs/:id/stream', async (c) => {
+    const id = c.req.param('id');
+    if (!(await getJob(sql, id))) return c.json({ error: 'Not found' }, 404);
     return streamSSE(c, async (stream) => {
+      let aborted = false;
+      stream.onAbort(() => {
+        aborted = true;
+      });
+      // wait for the worker to claim it (the in-memory record appears at that moment)
+      while (!aborted && !jobs.get(id)) {
+        const row = await getJob(sql, id);
+        if (!row) return;
+        if (row.status === 'succeeded' || row.status === 'failed') {
+          for (const line of row.log.split('\n').filter(Boolean)) await stream.writeSSE({ event: 'line', data: line });
+          await stream.writeSSE({ event: 'done', data: JSON.stringify({ status: row.status, error: row.error }) });
+          return;
+        }
+        await sleep(1000);
+      }
+      const job = jobs.get(id);
+      if (!job || aborted) return;
       let idx = 0;
       const flush = async () => {
         while (idx < job.lines.length) {
@@ -184,8 +189,8 @@ export function createApp({ store, jobs }: AppDeps) {
         return;
       }
       await new Promise<void>((resolve) => {
-        const onLine = (id: string) => {
-          if (id === job.id) void flush();
+        const onLine = (jobId: string) => {
+          if (jobId === job.id) void flush();
         };
         const onDone = async (j: typeof job) => {
           if (j.id !== job.id) return;

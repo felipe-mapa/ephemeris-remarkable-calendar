@@ -25,7 +25,7 @@ function Header() {
       {busy && (
         <Link to={`/activity/${running.id}`} className="flex items-center gap-3 px-6 h-8 text-xs bg-marker text-ink border-t border-marker-deep">
           <span className="inline-block w-2 h-2 rounded-full bg-ink animate-pulse" aria-hidden />
-          <span className="font-medium shrink-0">{JOB_LABELS[running.kind]}</span>
+          <span className="font-medium shrink-0">{running.status === 'queued' ? 'Queued: ' : ''}{JOB_LABELS[running.kind]}</span>
           <span className="truncate text-ink-soft">{lastLine || 'Starting…'}</span>
           <span className="ml-auto shrink-0 underline">Open log</span>
         </Link>
