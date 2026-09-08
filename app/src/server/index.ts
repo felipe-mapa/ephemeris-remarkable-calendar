@@ -21,7 +21,7 @@ if (fs.existsSync(paths.clientDist)) {
   app.get('*', serveStatic({ root: rel, path: 'index.html' }));
 }
 
-// The same process drains public.jobs (filled by pg_cron and by the UI).
+// The same process drains public.jobs (filled by the UI and the CLI).
 const worker = env.workerIntervalMs > 0 ? startWorker({ sql: store.sql, store, jobs, intervalMs: env.workerIntervalMs }) : null;
 
 serve({ fetch: app.fetch, port: PORT }, (info) => {
