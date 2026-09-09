@@ -1,0 +1,4 @@
+network: downloads.claude.ai:443
+network: claude.com:443
+network: mcp-proxy.anthropic.com:443
+network: api.anthropic.com:443

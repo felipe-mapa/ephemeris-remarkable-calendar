@@ -5,7 +5,14 @@ import { EventStore } from './db.js';
 import { listCalendarSources } from './sources.js';
 import { fetchAllSources } from './ics.js';
 import type { JobContext } from './jobs.js';
-import { paths, pdfPathForYear, eventsJsonPathForYear, RMAPI_IMAGE, TIMEZONE } from './paths.js';
+import {
+  paths,
+  pdfPathForYear,
+  eventsJsonPathForYear,
+  RMAPI_IMAGE,
+  PROJECT_ROOT,
+  TIMEZONE,
+} from "./paths.js";
 
 const today = () => DateTime.now().setZone(TIMEZONE);
 export const currentYear = () => today().year;
@@ -87,6 +94,26 @@ function requireRmapiConfig() {
   }
 }
 
+/**
+ * RMAPI_IMAGE is built locally from the project's Dockerfile (there's no registry to pull it
+ * from — `docker run` fails with "pull access denied" if it's missing). Build it on demand so a
+ * fresh checkout, a renamed image tag, or a pruned image doesn't break unattended runs (e.g. via
+ * the macOS Shortcut).
+ */
+async function ensureRmapiImage(ctx: JobContext): Promise<void> {
+  const check = await ctx.run('docker', ['image', 'inspect', RMAPI_IMAGE], { timeoutMs: 15_000 });
+  if (check.code === 0) return;
+  ctx.log(`🐳 Docker image "${RMAPI_IMAGE}" not found locally, building it...`);
+  const [image, tag] = RMAPI_IMAGE.split(':');
+  const build = await ctx.run(
+    'docker',
+    ['build', '--target', 'remarkable-calendar-rmapi', '-t', `${image}:${tag ?? 'latest'}`, PROJECT_ROOT],
+    { timeoutMs: 15 * 60_000 },
+  );
+  if (build.code !== 0) throw new Error(`Failed to build "${RMAPI_IMAGE}" (exit ${build.code}): ${build.stderr.trim()}`);
+  ctx.log(`✅ Built "${RMAPI_IMAGE}"`);
+}
+
 /** Port of backup_from_remarkable() in scripts/helpers/functions.sh. Returns the backup path or null when the document is not on the device. */
 export async function backupFromRemarkable(ctx: JobContext, docName: string): Promise<string | null> {
   requireRmapiConfig();
@@ -95,6 +122,7 @@ export async function backupFromRemarkable(ctx: JobContext, docName: string): Pr
     ctx.log('❌ Docker daemon is not reachable (is Docker Desktop running?)');
     return null;
   }
+  await ensureRmapiImage(ctx);
   const ts = today().toFormat('yyyyLLdd_HHmmss');
   const tempDownload = path.join(paths.backups, `${docName}.rmdoc`);
   const finalPath = path.join(paths.backups, `${docName}_${ts}.rmdoc`);
